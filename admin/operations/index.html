@@ -581,20 +581,20 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);colo
 // ════════════════════════════════════════════════════
 //  FIREBASE CONFIG
 // ════════════════════════════════════════════════════
-const fbConfig={
-  apiKey:"AIzaSyDtDK7-iDRy1E-kjZubjyjkPW7Th33BMyU",
-  authDomain:"omniservicetg-59df3.firebaseapp.com",
-  projectId:"omniservicetg-59df3",
-  storageBucket:"omniservicetg-59df3.firebasestorage.app",
-  messagingSenderId:"196278567761",
-  appId:"1:196278567761:web:4f6416acaab58b67bf4970"
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SidnsUkDMbIc9jA1qxBbuaZpuThNbMI",
+  authDomain: "omniservicetg-17bac.firebaseapp.com",
+  projectId: "omniservicetg-17bac",
+  storageBucket: "omniservicetg-17bac.firebasestorage.app",
+  messagingSenderId: "521668188454",
+  appId: "1:521668188454:web:faa4df2aa0aee5595209e7"
 };
 firebase.initializeApp(fbConfig);
 const db   = firebase.firestore();
 const auth = firebase.auth();
 
 const ALLOWED_ROLE = 'ops'; // Rôle autorisé pour cette interface
-const ADMIN_EMAIL = 'admin@omniservicetg.com';
+const ADMIN_EMAIL = 'admin@omniservice.tg';
 
 const RL = {livreur:'🛵 Livreur',securite:'🔒 Sécurité',entretien:'🧹 Entretien',depannage:'🔧 Dépannage',commercial:'💼 Commercial',comm:'📢 Communication',ops:'⚙️ Opérations'};
 const RC = {livreur:'p-livreur',securite:'p-securite',entretien:'p-entretien',depannage:'p-depannage',commercial:'p-commercial',comm:'p-comm'};
