@@ -1,0 +1,14 @@
+{
+  "name": "OmniService TG — RH",
+  "short_name": "RH TG",
+  "description": "Interface Responsable RH OmniService TG",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#7B1FA2",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "../assets/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "../assets/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
