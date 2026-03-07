@@ -1,0 +1,40 @@
+{
+  "name": "OmniService TG",
+  "short_name": "OmniService",
+  "description": "Alimentation, livraison, nettoyage, restauration et plus à Lomé, Togo.",
+  "start_url": "/OmniServiceTG/",
+  "scope": "/OmniServiceTG/",
+  "display": "standalone",
+  "background_color": "#1E6FBE",
+  "theme_color": "#1E6FBE",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "https://boxalink-collab.github.io/OmniServiceTG/assets/icon-any-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://boxalink-collab.github.io/OmniServiceTG/assets/icon-any-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://boxalink-collab.github.io/OmniServiceTG/assets/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://boxalink-collab.github.io/OmniServiceTG/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "screenshots": []
+}
