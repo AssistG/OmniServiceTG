@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>OmniService TG — RH Manager</title>
+<meta name="theme-color" content="#1A1A2E"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="RH OmniTG"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="../assets/logo.png" type="image/png"/>
+<link rel="apple-touch-icon" href="../assets/logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- ══ SPLASH FAILSAFE — script SYNCHRONE dans <head>, s'exécute avant tout ══ -->
+<script>
+(function(){
+  function _hideSplash(){
+    var s = document.getElementById('splash');
+    if (!s || s._gone) return;
+    s._gone = true;
+    s.style.transition = 'opacity .5s, transform .5s';
+    s.style.opacity    = '0';
+    s.style.transform  = 'scale(1.03)';
+    s.style.pointerEvents = 'none';
+    setTimeout(function(){ if (s.parentNode) s.parentNode.removeChild(s); }, 520);
+  }
+  // Méthode 1 : DOMContentLoaded (fiable)
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(_hideSplash, 3000);
+    setTimeout(_hideSplash, 6000); // sécurité absolue
+  });
+  // Méthode 2 : si DOMContentLoaded déjà passé (cas rare)
+  if (document.readyState !== 'loading') {
+    setTimeout(_hideSplash, 3000);
+    setTimeout(_hideSplash, 6000);
+  }
+  // Exposer pour que le module Firebase l'appelle aussi
+  window._hideSplash = _hideSplash;
+})();
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1E6FBE;--blue-d:#155A9C;--blue-s:rgba(30,111,190,.1);
+  --ora:#F5820A;--dark:#1A1A2E;--mid:#4A4A6A;--light:#9999BB;
+  --border:#E8EAF0;--bg:#F4F6FA;--green:#2E7D32;--red:#C62828;
+  --purple:#7B1FA2;--purple-d:#6A1B9A;--purple-s:rgba(123,31,162,.1);
+}
+html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);color:var(--dark);overflow:hidden}
+
+/* ═══ SPLASH ═══ */
+#splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0a1220,#1a2a50);}
+#splash::before{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(30,111,190,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(30,111,190,.04) 1px,transparent 1px);
+  background-size:40px 40px;}
+.sp-orb{position:absolute;border-radius:50%;pointer-events:none;}
+.sp-o1{width:350px;height:350px;top:-80px;right:-80px;
+  background:radial-gradient(circle,rgba(123,31,162,.15) 0%,transparent 70%);
+  animation:spOrb 4s ease-in-out infinite alternate;}
+.sp-o2{width:280px;height:280px;bottom:-60px;left:-60px;
+  background:radial-gradient(circle,rgba(30,111,190,.12) 0%,transparent 70%);
+  animation:spOrb 4s ease-in-out infinite alternate-reverse;}
+@keyframes spOrb{from{transform:scale(1)}to{transform:scale(1.15) translate(10px,-10px)}}
+.sp-content{position:relative;z-index:2;text-align:center;padding:32px;}
+.sp-badge{display:inline-block;background:rgba(123,31,162,.2);border:1px solid rgba(123,31,162,.4);
+  border-radius:999px;padding:5px 16px;font-size:10px;font-weight:800;letter-spacing:1.5px;
+  color:#CE93D8;text-transform:uppercase;margin-bottom:20px;animation:spFu .5s .3s both;}
+.sp-logo{width:100px;height:100px;border-radius:26px;margin:0 auto 20px;
+  background:linear-gradient(135deg,rgba(123,31,162,.2),rgba(30,111,190,.1));
+  border:1.5px solid rgba(123,31,162,.35);display:flex;align-items:center;justify-content:center;
+  overflow:hidden;animation:spPi .8s .4s both;}
+.sp-logo img{width:76px;height:76px;object-fit:contain;}
+.sp-title{font-family:'Nunito',sans-serif;font-size:30px;font-weight:900;color:#fff;
+  margin-bottom:4px;animation:spFu .6s .8s both;}
+.sp-title .b{color:rgba(255,255,255,.9)}.sp-title .o{color:var(--ora)}
+.sp-tag{font-size:11px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1px;animation:spFu .6s 1s both;}
+.sp-bar{width:200px;height:2px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;
+  margin:24px auto 8px;animation:spFu .5s 1.2s both;}
+.sp-bar-fill{height:100%;background:linear-gradient(90deg,var(--purple),#CE93D8,var(--ora));animation:spBl 1.6s 1.3s both;}
+@keyframes spBl{0%{width:0}100%{width:100%}}
+@keyframes spFu{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spPi{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ═══ LOGIN ═══ */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0e1420,#1a2540);
+  display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+.lbox{background:#fff;border-radius:22px;padding:36px 32px;width:100%;max-width:380px;
+  text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4);}
+.l-logo{width:72px;height:72px;background:linear-gradient(135deg,var(--purple),var(--purple-d));
+  border-radius:18px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.l-logo img{width:56px;height:56px;object-fit:contain;}
+.l-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--dark);margin-bottom:2px;}
+.l-role{display:inline-block;background:#F3E5F5;color:var(--purple);font-size:11px;font-weight:700;
+  padding:3px 12px;border-radius:999px;margin-bottom:18px;}
+.l-label{display:block;font-size:11px;font-weight:700;color:var(--mid);text-align:left;
+  margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.l-inp{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;
+  font-size:13px;font-family:'Poppins',sans-serif;margin-bottom:13px;outline:none;
+  background:var(--bg);transition:border-color .2s;}
+.l-inp:focus{border-color:var(--purple);background:#fff;}
+.l-btn{width:100%;background:linear-gradient(135deg,var(--purple),var(--purple-d));color:#fff;border:none;
+  border-radius:999px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;
+  font-family:'Poppins',sans-serif;box-shadow:0 4px 16px rgba(123,31,162,.35);transition:opacity .2s;}
+.l-btn:hover{opacity:.9;}
+.l-err{color:var(--red);font-size:12px;font-weight:600;margin-top:10px;min-height:18px;}
+.l-info{margin-top:14px;font-size:11px;color:var(--light);background:var(--bg);
+  border-radius:9px;padding:10px 12px;text-align:left;line-height:1.7;}
+
+/* ═══ LAYOUT ═══ */
+.layout{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:248px;background:#1A1A2E;flex-shrink:0;display:flex;flex-direction:column;transition:transform .3s;z-index:100;}
+.sb-brand{padding:18px 20px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:12px;}
+.sb-lg{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,rgba(123,31,162,.3),rgba(30,111,190,.15));
+  border:1px solid rgba(123,31,162,.4);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+.sb-lg img{width:30px;height:30px;object-fit:contain;}
+.sb-nm{font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;}
+.sb-nm .b{color:var(--blue)}.sb-nm .o{color:var(--ora)}
+.sb-su{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;}
+.sb-nav{padding:16px 12px;flex:1;overflow-y:auto;}
+.sb-sec{font-size:9px;font-weight:800;color:rgba(255,255,255,.2);text-transform:uppercase;
+  letter-spacing:1px;padding:0 10px;margin:14px 0 6px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
+  cursor:pointer;margin-bottom:3px;transition:background .15s;font-size:13px;font-weight:600;
+  color:rgba(255,255,255,.5);border:none;background:transparent;width:100%;text-align:left;font-family:'Poppins',sans-serif;}
+.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);}
+.sb-item.on{background:rgba(123,31,162,.3);color:#fff;}
+.sb-ico{font-size:16px;width:22px;text-align:center;flex-shrink:0;}
+.sb-badge{margin-left:auto;background:var(--ora);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;}
+.sb-footer{padding:14px;border-top:1px solid rgba(255,255,255,.07);}
+.sb-ai{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sb-av{width:36px;height:36px;border-radius:10px;background:rgba(123,31,162,.25);
+  border:1px solid rgba(123,31,162,.4);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sb-an{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);}
+.sb-ae{font-size:10px;color:rgba(255,255,255,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.logout-btn{width:100%;background:rgba(198,40,40,.2);color:#ff8a80;border:none;border-radius:9px;
+  padding:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;}
+.logout-btn:hover{background:rgba(198,40,40,.35);}
+.hamburger{display:none;position:fixed;top:14px;left:14px;z-index:300;background:var(--purple);color:#fff;
+  border:none;border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer;align-items:center;justify-content:center;}
+
+/* ═══ MAIN ═══ */
+.main{flex:1;overflow-y:auto;background:var(--bg);}
+.main-inner{max-width:1100px;margin:0 auto;padding:28px 24px 48px;}
+.pg-title{font-family:'Nunito',sans-serif;font-size:24px;font-weight:900;color:var(--dark);margin-bottom:4px;}
+.pg-sub{font-size:12px;color:var(--light);margin-bottom:24px;}
+
+/* ═══ KPI ═══ */
+.kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px;}
+.kpi-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.07);}
+.kpi-ico{font-size:24px;margin-bottom:6px;}
+.kpi-val{font-family:'Nunito',sans-serif;font-size:30px;font-weight:900;color:var(--dark);}
+.kpi-lbl{font-size:11px;color:var(--light);font-weight:600;}
+
+/* ═══ FILTERS ═══ */
+.filters-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.fbtn{background:#fff;border:1.5px solid var(--border);border-radius:999px;padding:7px 14px;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;color:var(--mid);transition:all .15s;white-space:nowrap;}
+.fbtn.on,.fbtn:hover{background:var(--purple);color:#fff;border-color:var(--purple);}
+.fsearch input{padding:9px 14px;border:1.5px solid var(--border);border-radius:999px;
+  font-size:12px;outline:none;font-family:'Poppins',sans-serif;background:#fff;min-width:180px;}
+.fsearch input:focus{border-color:var(--purple);}
+.action-btn{background:var(--purple);color:#fff;border:none;border-radius:999px;
+  padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;white-space:nowrap;}
+.action-btn:hover{background:var(--purple-d);}
+
+/* ═══ TABLE ═══ */
+.agents-wrap{background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;}
+.agents-head{display:grid;grid-template-columns:46px 1fr 160px 90px 70px 95px 140px;gap:10px;
+  padding:11px 16px;background:var(--bg);font-size:10px;font-weight:700;color:var(--light);
+  text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);}
+.agent-row{display:grid;grid-template-columns:46px 1fr 160px 90px 70px 95px 140px;gap:10px;
+  padding:13px 16px;border-bottom:1px solid var(--border);align-items:center;transition:background .1s;}
+.agent-row:last-child{border-bottom:none;}
+.agent-row:hover{background:#FAFBFC;}
+.a-av{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--blue-d));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;}
+.a-name{font-size:13px;font-weight:700;color:var(--dark);}
+.a-code{font-size:10px;color:var(--blue);font-weight:700;font-family:monospace;
+  background:var(--blue-s);padding:2px 7px;border-radius:5px;margin-top:2px;display:inline-block;}
+.a-email{font-size:11px;color:var(--light);margin-top:1px;}
+
+/* ═══ PILLS ═══ */
+.pill{font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-block;}
+.p-livreur{background:#E3F2FD;color:#1565C0;}
+.p-comptable{background:#E8F5E9;color:#2E7D32;}
+.p-stats{background:#FFF3E0;color:#E65100;}
+.p-comm{background:#FCE4EC;color:#C2185B;}
+.p-entretien{background:#F3E5F5;color:#6A1B9A;}
+.p-depannage{background:#FFF8E1;color:#F57F17;}
+.p-securite{background:#FFEBEE;color:#B71C1C;}
+.p-commercial{background:#E8F5E9;color:#1B5E20;}
+.p-ops{background:#E0F2F1;color:#004D40;}
+.p-agent{background:#F3E5F5;color:#7B1FA2;}
+.p-actif{background:#E8F5E9;color:#2E7D32;}
+.p-inactif{background:#FFEBEE;color:#C62828;}
+.p-online{background:#E8F5E9;color:#2E7D32;}
+.p-offline{background:#EEE;color:#757575;}
+
+/* ═══ ACTION BTNS ═══ */
+.act-btns{display:flex;gap:5px;flex-wrap:wrap;}
+.act-v{background:#F3E5F5;color:var(--purple);border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;}
+.act-e{background:#E3F2FD;color:var(--blue);border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;}
+.act-t{border:none;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;}
+.act-dis{background:#FFF3E0;color:#E65100;}
+.act-en{background:#E8F5E9;color:#2E7D32;}
+.act-d{background:#FFEBEE;color:#C62828;border:none;border-radius:7px;padding:6px 9px;font-size:13px;cursor:pointer;}
+
+/* ═══ MOBILE CARD ═══ */
+.acm{background:#fff;border-radius:14px;padding:15px;box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:10px;display:none;}
+.acm-h{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.acm-info{flex:1;min-width:0;}
+.acm-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+
+/* ═══ BARS ═══ */
+.bar-row{margin-bottom:12px;}
+.bar-top{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px;}
+.bar-bg{height:8px;background:var(--bg);border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(135deg,var(--purple),var(--blue));border-radius:999px;transition:width .6s;}
+
+/* ═══ ONLINE ═══ */
+.online-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+.online-card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);text-align:center;position:relative;}
+.online-dot{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#2E7D32;box-shadow:0 0 0 2px #fff;}
+.online-av{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--purple),var(--blue));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;margin:0 auto 10px;}
+.online-name{font-size:13px;font-weight:700;color:var(--dark);}
+.online-role{font-size:10px;color:var(--light);margin-top:2px;}
+.online-time{font-size:10px;color:#2E7D32;font-weight:600;margin-top:4px;}
+
+/* ═══ PERF ═══ */
+.perf-table{background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;}
+.perf-head{display:grid;grid-template-columns:1fr 90px 70px 120px;gap:10px;
+  padding:11px 16px;background:var(--bg);font-size:10px;font-weight:700;color:var(--light);
+  text-transform:uppercase;border-bottom:1px solid var(--border);}
+.perf-row{display:grid;grid-template-columns:1fr 90px 70px 120px;gap:10px;
+  padding:13px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;}
+.perf-row:last-child{border-bottom:none;}
+.bar-mini{height:6px;background:var(--bg);border-radius:999px;overflow:hidden;}
+.bar-mini-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:999px;transition:width .5s;}
+
+/* ═══ ZONES ═══ */
+.zone-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.zone-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.zone-name{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:4px;}
+.zone-count{font-size:12px;color:var(--light);margin-bottom:10px;}
+.zone-item{font-size:11px;color:var(--mid);background:var(--bg);border-radius:6px;padding:4px 8px;display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+
+/* ═══ MODAL ═══ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:18px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;position:relative;}
+.modal-close{position:absolute;top:14px;right:14px;background:var(--bg);border:none;border-radius:9px;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--mid);}
+.modal-title{font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;color:var(--dark);margin-bottom:18px;}
+.f-label{display:block;font-size:11px;font-weight:700;color:var(--mid);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.f-inp,.f-sel{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;
+  font-family:'Poppins',sans-serif;font-size:13px;background:var(--bg);outline:none;
+  margin-bottom:13px;transition:border-color .2s;appearance:none;}
+.f-inp:focus,.f-sel:focus{border-color:var(--purple);background:#fff;}
+.modal-save-btn{width:100%;background:linear-gradient(135deg,var(--purple),var(--purple-d));color:#fff;
+  border:none;border-radius:999px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;}
+.modal-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bg);font-size:12px;}
+.modal-key{color:var(--light);font-weight:600;min-width:110px;}
+.modal-val{color:var(--dark);font-weight:600;text-align:right;word-break:break-word;}
+
+/* ═══ CODE BOX ═══ */
+.code-box{background:linear-gradient(135deg,#1A1A2E,#2d2d4e);border-radius:14px;padding:24px;text-align:center;margin:16px 0;}
+.code-val{font-family:monospace;font-size:38px;font-weight:900;color:#fff;letter-spacing:5px;margin-bottom:8px;}
+.code-hint{font-size:11px;color:rgba(255,255,255,.4);line-height:1.6;}
+.copy-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);
+  border-radius:9px;padding:10px 20px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;margin-top:10px;}
+.copy-btn:hover{background:rgba(255,255,255,.22);}
+
+/* ═══ TOAST & SPINNER ═══ */
+.toast{position:fixed;bottom:24px;right:24px;background:#1A1A2E;color:#fff;border-radius:12px;
+  padding:13px 20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;
+  transition:opacity .3s;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.3);}
+.toast.show{opacity:1;}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(123,31,162,.2);
+  border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-msg{text-align:center;padding:48px;color:var(--light);font-size:13px;}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:768px){
+  .sidebar{position:fixed;top:0;bottom:0;left:0;z-index:200;transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .hamburger{display:flex;}
+  .main-inner{padding:60px 16px 40px;}
+  .agents-head,.agent-row{display:none;}
+  .acm{display:block;}
+  .kpi-row{grid-template-columns:1fr 1fr;}
+  .perf-head,.perf-row{grid-template-columns:1fr 80px 60px;}
+}
+@media(min-width:1000px){.kpi-row{grid-template-columns:repeat(4,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- ══ SPLASH ══ -->
+<div id="splash">
+  <div class="sp-orb sp-o1"></div>
+  <div class="sp-orb sp-o2"></div>
+  <div class="sp-content">
+    <div class="sp-badge">👥 &nbsp;Ressources Humaines</div>
+    <div class="sp-logo">
+      <img src="../assets/logo.png" alt="OmniService TG" onerror="this.outerHTML='<div style=font-size:46px>🛡️</div>'"/>
+    </div>
+    <div class="sp-title"><span class="b">Omni</span><span class="o">Service</span> <span style="color:#fff">TG</span></div>
+    <div class="sp-tag">Interface RH / Manager</div>
+    <div class="sp-bar"><div class="sp-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="lbox">
+    <div class="l-logo"><img src="../assets/logo.png" alt="" onerror="this.parentElement.innerHTML='🛡️'"/></div>
+    <div class="l-title">OmniService <span style="color:var(--ora)">TG</span></div>
+    <div class="l-role">👥 Responsable RH</div>
+    <label class="l-label">Email</label>
+    <input type="email" class="l-inp" id="l-email" value="rh@omniservicetg.com"/>
+    <label class="l-label">Mot de passe</label>
+    <input type="password" class="l-inp" id="l-pass" placeholder="••••••••"/>
+    <button class="l-btn" id="login-btn">Se connecter →</button>
+    <div class="l-err" id="l-err"></div>
+    <div class="l-info"><b>Accès réservé :</b> Interface uniquement accessible au Responsable RH d'OmniService TG.</div>
+  </div>
+</div>
+
+<!-- ══ INTERFACE RH ══ -->
+<div class="layout" id="rh-ui" style="display:none">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-lg"><img src="../assets/logo.png" alt="" onerror="this.parentElement.innerHTML='🛡️'"/></div>
+      <div>
+        <div class="sb-nm"><span class="b">Omni</span><span class="o">Service</span></div>
+        <div class="sb-su">RH / Manager</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-sec">Tableau de bord</div>
+      <button class="sb-item on" onclick="showSection('dashboard',this)"><span class="sb-ico">🏠</span>Vue d'ensemble</button>
+      <button class="sb-item" onclick="showSection('online',this)"><span class="sb-ico">🟢</span>En ligne<span class="sb-badge" id="badge-online">0</span></button>
+      <div class="sb-sec">Agents</div>
+      <button class="sb-item" onclick="showSection('agents',this)"><span class="sb-ico">👥</span>Liste des agents<span class="sb-badge" id="badge-agents">0</span></button>
+      <button class="sb-item" onclick="showSection('create',this)"><span class="sb-ico">➕</span>Créer un agent</button>
+      <div class="sb-sec">Analyses</div>
+      <button class="sb-item" onclick="showSection('perf',this)"><span class="sb-ico">📊</span>Performances</button>
+      <button class="sb-item" onclick="showSection('zones',this)"><span class="sb-ico">📍</span>Zones</button>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-ai">
+        <div class="sb-av">👤</div>
+        <div>
+          <div class="sb-an">Responsable RH</div>
+          <div class="sb-ae" id="rh-email-disp"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f98b91b9969497908a9c8b8f909a9c8d9ed79a9694">[email&#160;protected]</a></div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">🚪 Se déconnecter</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+
+      <!-- DASHBOARD -->
+      <div id="section-dashboard">
+        <div class="pg-title">👥 Tableau de bord RH</div>
+        <div class="pg-sub" id="rh-date"></div>
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-ico">👥</div><div class="kpi-val" id="kpi-total">0</div><div class="kpi-lbl">Agents total</div></div>
+          <div class="kpi-card"><div class="kpi-ico">✅</div><div class="kpi-val" id="kpi-actifs">0</div><div class="kpi-lbl">Actifs</div></div>
+          <div class="kpi-card"><div class="kpi-ico">🟢</div><div class="kpi-val" id="kpi-online">0</div><div class="kpi-lbl">En ligne</div></div>
+          <div class="kpi-card"><div class="kpi-ico">🛵</div><div class="kpi-val" id="kpi-livr">0</div><div class="kpi-lbl">Livreurs</div></div>
+        </div>
+        <div style="background:#fff;border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:20px;">
+          <div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:16px;">📊 Répartition par rôle</div>
+          <div id="role-bars"></div>
+        </div>
+        <div style="background:#fff;border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(0,0,0,.07);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:15px;font-weight:700;color:var(--dark);">🆕 Derniers agents créés</div>
+            <button class="action-btn" style="padding:7px 14px;font-size:11px;" onclick="loadDashboard()">🔄</button>
+          </div>
+          <div id="recent-agents"></div>
+        </div>
+      </div>
+
+      <!-- EN LIGNE -->
+      <div id="section-online" style="display:none">
+        <div class="pg-title">🟢 En ligne maintenant</div>
+        <div class="pg-sub">Agents connectés ces 15 dernières minutes</div>
+        <button class="action-btn" onclick="loadOnline()" style="margin-bottom:18px;">🔄 Actualiser</button>
+        <div id="online-grid" class="online-grid"></div>
+      </div>
+
+      <!-- LISTE AGENTS -->
+      <div id="section-agents" style="display:none">
+        <div class="pg-title">👥 Liste des agents</div>
+        <div class="pg-sub">Gestion des comptes agents</div>
+        <div class="filters-bar">
+          <button class="fbtn on" onclick="filterAgents('all',this)">Tous</button>
+          <button class="fbtn" onclick="filterAgents('livreur',this)">🛵 Livreurs</button>
+          <button class="fbtn" onclick="filterAgents('comptable',this)">💰 Comptables</button>
+          <button class="fbtn" onclick="filterAgents('stats',this)">📊 Statisticiens</button>
+          <button class="fbtn" onclick="filterAgents('comm',this)">📢 Comm.</button>
+          <button class="fbtn" onclick="filterAgents('entretien',this)">🧹 Entretien</button>
+          <button class="fbtn" onclick="filterAgents('depannage',this)">🔧 Dépannage</button>
+          <button class="fbtn" onclick="filterAgents('securite',this)">🔒 Sécurité</button>
+          <button class="fbtn" onclick="filterAgents('commercial',this)">💼 Commercial</button>
+          <button class="fbtn" onclick="filterAgents('ops',this)">⚙️ Opérations</button>
+          <div class="fsearch"><input type="text" placeholder="🔍 Nom, email, code..." oninput="searchAgents(this.value)"/></div>
+          <button class="action-btn" onclick="loadAgents()">🔄</button>
+        </div>
+        <div class="agents-wrap">
+          <div class="agents-head">
+            <div></div><div>Agent</div><div>Rôle</div><div>Zone</div><div>Statut</div><div>Connexion</div><div>Actions</div>
+          </div>
+          <div id="agents-desktop"><div class="empty-msg"><div class="spinner"></div></div></div>
+        </div>
+        <div id="agents-mobile"></div>
+      </div>
+
+      <!-- CRÉER AGENT -->
+      <div id="section-create" style="display:none">
+        <div class="pg-title">➕ Créer un agent</div>
+        <div class="pg-sub">Le code d'accès est généré automatiquement selon le rôle</div>
+        <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,.07);max-width:520px;">
+          <label class="f-label">Nom complet *</label>
+          <input type="text" class="f-inp" id="new-nom" placeholder="Ex: Jean Kodjo"/>
+          <label class="f-label">Email professionnel *</label>
+          <input type="email" class="f-inp" id="new-email" placeholder="jean@omniservicetg.com"/>
+          <label class="f-label">Téléphone</label>
+          <input type="tel" class="f-inp" id="new-tel" placeholder="+228 XX XX XX XX"/>
+          <label class="f-label">Rôle *</label>
+          <select class="f-sel" id="new-role" onchange="updateCodePreview();onRoleChange()">
+            <option value="">-- Sélectionner un rôle --</option>
+            <option value="livreur">🛵 Livreur</option>
+            <option value="comm">📢 Communication</option>
+            <option value="entretien">🧹 Agent d'entretien</option>
+            <option value="depannage">🔧 Agent de dépannage</option>
+            <option value="securite">🔒 Agent de sécurité</option>
+            <option value="commercial">💼 Agent commercial</option>
+          </select>
+          <div style="background:#FFF8E1;border-radius:10px;padding:10px 13px;margin-top:-8px;margin-bottom:13px;font-size:11px;color:#E65100;font-weight:600;">
+            🔒 Les comptes <b>Comptable</b>, <b>Statisticien</b> et <b>Chargé des opérations</b> sont gérés par l'administration uniquement.
+          </div>
+
+          <div id="specialite-wrap" style="display:none;">
+            <label class="f-label">Spécialité de dépannage *</label>
+            <select class="f-sel" id="new-specialite">
+              <option value="">-- Sélectionner une spécialité --</option>
+              <option value="Électricité">⚡ Électricité</option>
+              <option value="Plomberie">💧 Plomberie</option>
+              <option value="Mécanique">🔩 Mécanique</option>
+              <option value="Climatisation">❄️ Climatisation</option>
+              <option value="Informatique">💻 Informatique</option>
+              <option value="Menuiserie">🪚 Menuiserie</option>
+              <option value="Maçonnerie">🧱 Maçonnerie</option>
+              <option value="Autre">🔧 Autre</option>
+            </select>
+          </div>
+
+          <div id="ops-info-wrap" style="display:none;background:#E0F2F1;border-radius:11px;padding:13px;margin-bottom:13px;font-size:11px;color:#004D40;line-height:1.9;">
+            <b>⚙️ Missions du Chargé des opérations :</b><br/>
+            • Gérer les annonces de produit (validation, mise en ligne, suivi)<br/>
+            • Coordonner les visites de propriétés avec les acheteurs<br/>
+            • Assurer le suivi de chaque commande sur la plateforme<br/>
+            • Gérer les relations avec les partenaires (agents immo, notaires, restaurants, sociétés…)<br/>
+            • Optimiser les processus pour améliorer les ventes
+          </div>
+
+          <label class="f-label">Zone / Secteur</label>
+          <input type="text" class="f-inp" id="new-zone" placeholder="Ex: Adidogomé, Bè, Tokoin..."/>
+
+          <div style="background:var(--bg);border-radius:11px;padding:14px;margin-bottom:16px;">
+            <div style="font-size:11px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Code d'accès généré automatiquement</div>
+            <div style="font-family:monospace;font-size:30px;font-weight:900;color:var(--dark);letter-spacing:4px;" id="code-preview">—</div>
+            <div style="font-size:11px;color:var(--light);margin-top:6px;">À communiquer à l'agent pour sa première connexion (mot de passe initial).</div>
+          </div>
+          <button class="modal-save-btn" onclick="createAgent()" id="create-btn">✅ Créer l'agent</button>
+          <div id="create-msg" style="margin-top:12px;font-size:12px;font-weight:600;min-height:18px;"></div>
+        </div>
+      </div>
+
+      <!-- PERFORMANCES -->
+      <div id="section-perf" style="display:none">
+        <div class="pg-title">📊 Performances livreurs</div>
+        <div class="pg-sub">Suivi des livraisons par agent</div>
+        <div class="filters-bar">
+          <button class="fbtn on" onclick="loadPerf('today',this)">Aujourd'hui</button>
+          <button class="fbtn" onclick="loadPerf('week',this)">Cette semaine</button>
+          <button class="fbtn" onclick="loadPerf('month',this)">Ce mois</button>
+        </div>
+        <div class="perf-table">
+          <div class="perf-head"><div>Livreur</div><div>Livraisons</div><div>Taux</div><div>Performance</div></div>
+          <div id="perf-body"><div class="empty-msg"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ZONES -->
+      <div id="section-zones" style="display:none">
+        <div class="pg-title">📍 Zones & Affectations</div>
+        <div class="pg-sub">Répartition géographique des agents</div>
+        <div id="zones-grid" class="zone-grid"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ══ MODAL : VOIR AGENT ══ -->
+<div class="modal-overlay" id="modal-view">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-view')">✕</button>
+    <div class="modal-title" id="mv-title">Détail agent</div>
+    <div id="mv-content"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="modal-save-btn" style="background:linear-gradient(135deg,var(--blue),var(--blue-d));" id="mv-edit-btn">✏️ Modifier</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL : MODIFIER AGENT ══ -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    <div class="modal-title">✏️ Modifier l'agent</div>
+    <input type="hidden" id="edit-uid"/>
+    <label class="f-label">Nom complet</label>
+    <input type="text" class="f-inp" id="edit-nom"/>
+    <label class="f-label">Téléphone</label>
+    <input type="tel" class="f-inp" id="edit-tel"/>
+    <label class="f-label">Rôle</label>
+    <select class="f-sel" id="edit-role" onchange="onEditRoleChange()">
+      <option value="livreur">🛵 Livreur</option>
+      <option value="comptable">💰 Comptable</option>
+      <option value="stats">📊 Statisticien</option>
+      <option value="comm">📢 Communication</option>
+      <option value="entretien">🧹 Agent d'entretien</option>
+      <option value="depannage">🔧 Agent de dépannage</option>
+      <option value="securite">🔒 Agent de sécurité</option>
+      <option value="commercial">💼 Agent commercial</option>
+      <option value="ops">⚙️ Chargé des opérations</option>
+    </select>
+    <div id="edit-specialite-wrap" style="display:none;">
+      <label class="f-label">Spécialité de dépannage</label>
+      <select class="f-sel" id="edit-specialite">
+        <option value="">-- Sélectionner une spécialité --</option>
+        <option value="Électricité">⚡ Électricité</option>
+        <option value="Plomberie">💧 Plomberie</option>
+        <option value="Mécanique">🔩 Mécanique</option>
+        <option value="Climatisation">❄️ Climatisation</option>
+        <option value="Informatique">💻 Informatique</option>
+        <option value="Menuiserie">🪚 Menuiserie</option>
+        <option value="Maçonnerie">🧱 Maçonnerie</option>
+        <option value="Autre">🔧 Autre</option>
+      </select>
+    </div>
+    <label class="f-label">Zone / Secteur</label>
+    <input type="text" class="f-inp" id="edit-zone"/>
+    <button class="modal-save-btn" onclick="saveEdit()">💾 Enregistrer</button>
+    <div id="edit-msg" style="margin-top:10px;font-size:12px;font-weight:600;min-height:18px;"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL : CODE CRÉÉ ══ -->
+<div class="modal-overlay" id="modal-code">
+  <div class="modal" style="text-align:center;">
+    <button class="modal-close" onclick="closeModal('modal-code')">✕</button>
+    <div class="modal-title">✅ Agent créé !</div>
+    <div style="font-size:13px;color:var(--mid);margin-bottom:4px;" id="code-agent-name"></div>
+    <div class="code-box">
+      <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Code d'accès</div>
+      <div class="code-val" id="code-val"></div>
+      <div class="code-hint">Communiquez ce code à l'agent.<br/>Il s'en servira comme mot de passe initial.</div>
+      <button class="copy-btn" onclick="copyCode()">📋 Copier le code</button>
+    </div>
+    <div style="font-size:12px;color:var(--light);line-height:1.8;background:var(--bg);border-radius:10px;padding:12px;text-align:left;">
+      <b>Email :</b> <span id="code-email"></span><br/>
+      <b>Interface :</b> <span id="code-interface"></span><br/>
+      <b>Rôle :</b> <span id="code-role"></span>
+    </div>
+    <button class="modal-save-btn" style="margin-top:16px;" onclick="closeModal('modal-code')">Fermer</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ FIREBASE ES MODULE — SANS script Cloudflare ══ -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc,
+         doc, query, where, serverTimestamp, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const fbConfig = {
+  apiKey:            "AIzaSyDtDK7-iDRy1E-kjZubjyjkPW7Th33BMyU",
+  authDomain:        "omniservicetg-59df3.firebaseapp.com",
+  projectId:         "omniservicetg-59df3",
+  storageBucket:     "omniservicetg-59df3.firebasestorage.app",
+  messagingSenderId: "196278567761",
+  appId:             "1:196278567761:web:4f6416acaab58b67bf4970"
+};
+const fbApp = initializeApp(fbConfig);
+const db    = getFirestore(fbApp);
+const auth  = getAuth(fbApp);
+
+const ALLOWED_ROLE = 'rh'; // Rôle autorisé pour cette interface
+const ADMIN_EMAIL = 'admin@omniservicetg.com';
+
+const ROLE_PREFIX = {
+  livreur:'LI', comptable:'CO', stats:'ST', comm:'CM',
+  entretien:'EN', depannage:'DP', securite:'SE', commercial:'CL', ops:'OP'
+};
+const ROLE_LABELS = {
+  livreur:'🛵 Livreur',         comptable:'💰 Comptable',
+  stats:'📊 Statisticien',      comm:'📢 Communication',
+  entretien:'🧹 Agent entretien', depannage:'🔧 Agent dépannage',
+  securite:'🔒 Agent sécurité', commercial:'💼 Agent commercial',
+  ops:'⚙️ Chargé des opérations'
+};
+const ROLE_IFACE = {
+  livreur:'../livreur/index.html',     comptable:'../comptable/index.html',
+  stats:'../stats/index.html',         comm:'../communication/index.html',
+  entretien:'../agent/index.html',     depannage:'../agent/index.html',
+  securite:'../agent/index.html',      commercial:'../agent/index.html',
+  ops:'../operations/index.html'
+};
+
+let agentsCache  = [];
+let filtreRole   = 'all';
+let filtreSearch = '';
+let counters     = {};
+let lastCode     = '';
+
+// ── Le module s'exécute : fermer le splash immédiatement ──
+if (typeof window._hideSplash === 'function') window._hideSplash();
+
+// ── Auth ──
+onAuthStateChanged(auth, async user => {
+  if (typeof window._hideSplash === 'function') window._hideSplash();
+  if (!user) {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('rh-ui').style.display        = 'none';
+    return;
+  }
+  const isAdmin = user.email === ADMIN_EMAIL;
+  let isAuthorized = isAdmin;
+  if (!isAdmin) {
+    try {
+      const empDoc = await getDoc(doc(db, 'employes', user.uid));
+      isAuthorized = empDoc.exists() && empDoc.data().role === ALLOWED_ROLE && empDoc.data().actif !== false;
+    } catch(e) { isAuthorized = false; }
+  }
+  if (isAuthorized) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('rh-ui').style.display        = 'flex';
+    document.getElementById('rh-email-disp').textContent  = isAdmin
+      ? '🛡️ Admin (vue RH)' : user.email;
+    document.getElementById('rh-date').textContent        =
+      'Bonjour ! ' + new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    await loadDashboard();
+    await loadCounters();
+  } else {
+    await signOut(auth);
+    toast('⛔ Accès réservé au RH','#C62828');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('rh-ui').style.display        = 'none';
+  }
+});
+
+// ── Login / Logout ──
+async function doLogin(){
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('l-err');
+  err.textContent = '';
+  if (!email||!pass){ err.textContent='⚠️ Champs obligatoires.'; return; }
+  btn.disabled=true; btn.textContent='⏳...';
+  try { await signInWithEmailAndPassword(auth,email,pass); }
+  catch(e){ err.textContent = e.code?.includes('credential')||e.code?.includes('password')
+    ? '❌ Email ou mot de passe incorrect.' : '❌ '+e.message; }
+  finally { btn.disabled=false; btn.textContent='Se connecter →'; }
+}
+window.doLogin  = doLogin;
+window.doLogout = async function(){ await signOut(auth); };
+window.toggleSidebar = function(){ document.getElementById('sidebar').classList.toggle('open'); };
+
+// Attacher les listeners login via JS (évite les problèmes de scope module/inline)
+document.addEventListener('DOMContentLoaded', function(){
+  const btn  = document.getElementById('login-btn');
+  const pass = document.getElementById('l-pass');
+  if(btn)  btn.addEventListener('click', doLogin);
+  if(pass) pass.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+});
+
+// ── Sections ──
+const SECTIONS = ['dashboard','online','agents','create','perf','zones'];
+window.showSection = function(id,btn){
+  SECTIONS.forEach(s=>{ const el=document.getElementById('section-'+s); if(el) el.style.display=s===id?'block':'none'; });
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  if(window.innerWidth<769) document.getElementById('sidebar').classList.remove('open');
+  if(id==='agents') loadAgents();
+  if(id==='online') loadOnline();
+  if(id==='perf')   loadPerf('today');
+  if(id==='zones')  loadZones();
+};
+
+// ── Toast & Modal ──
+function toast(msg,bg='#1A1A2E'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.background=bg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200);
+}
+window.closeModal = function(id){ document.getElementById(id).classList.remove('show'); };
+
+function rolePill(r){
+  return {livreur:'p-livreur',comptable:'p-comptable',stats:'p-stats',comm:'p-comm',
+    entretien:'p-entretien',depannage:'p-depannage',securite:'p-securite',
+    commercial:'p-commercial',ops:'p-ops',agent:'p-agent'}[r]||'p-agent';
+}
+
+// ── Compteurs ──
+async function loadCounters(){
+  try{ const s=await getDocs(collection(db,'agents')); counters={}; s.forEach(d=>{const r=d.data().role||'agent';counters[r]=(counters[r]||0)+1;}); }
+  catch(e){ counters={}; }
+}
+
+// ── Code preview ──
+window.updateCodePreview = async function(){
+  const role=document.getElementById('new-role').value;
+  if(!role){ document.getElementById('code-preview').textContent='—'; window._code=''; return; }
+  const prefix  = ROLE_PREFIX[role]||'AG';
+  const count   = (counters[role]||0)+1;
+  const num     = String(count).padStart(3,'0');
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const letter  = letters[Math.floor(Math.random()*letters.length)];
+  const code    = (prefix+num+letter).toUpperCase();
+  document.getElementById('code-preview').textContent=code;
+  window._code=code;
+};
+
+// ── Toggle affichage selon rôle ──
+window.onRoleChange = function(){
+  const role=document.getElementById('new-role').value;
+  document.getElementById('specialite-wrap').style.display = role==='depannage'?'block':'none';
+  document.getElementById('ops-info-wrap').style.display   = 'none';
+};
+window.onEditRoleChange = function(){
+  const role=document.getElementById('edit-role').value;
+  document.getElementById('edit-specialite-wrap').style.display = role==='depannage'?'block':'none';
+};
+
+// ── Créer agent ──
+window.createAgent = async function(){
+  const nom       = document.getElementById('new-nom').value.trim();
+  const email     = document.getElementById('new-email').value.trim();
+  const tel       = document.getElementById('new-tel').value.trim();
+  const role      = document.getElementById('new-role').value;
+  const zone      = document.getElementById('new-zone').value.trim();
+  const specialite = role==='depannage'?document.getElementById('new-specialite').value:'';
+  const code      = window._code||'';
+  const msg       = document.getElementById('create-msg');
+  const btn       = document.getElementById('create-btn');
+  msg.textContent = '';
+  if(!nom||!email||!role){ msg.style.color='#C62828'; msg.textContent='⚠️ Nom, email et rôle obligatoires.'; return; }
+  const RESTRICTED_ROLES = ['comptable','stats','ops'];
+  if(RESTRICTED_ROLES.includes(role)){ msg.style.color='#C62828'; msg.textContent='⛔ Ce rôle est réservé à l\'administration.'; return; }
+  if(role==='depannage'&&!specialite){ msg.style.color='#C62828'; msg.textContent='⚠️ Veuillez sélectionner une spécialité.'; return; }
+  if(!code){ msg.style.color='#C62828'; msg.textContent='⚠️ Sélectionnez un rôle pour générer le code.'; return; }
+  btn.disabled=true; btn.textContent='⏳ Création...';
+  try{
+    const ex=await getDocs(query(collection(db,'agents'),where('email','==',email)));
+    if(!ex.empty){ msg.style.color='#C62828'; msg.textContent='❌ Email déjà utilisé.'; return; }
+    await addDoc(collection(db,'agents'),{
+      nom,email,telephone:tel,role,zone,code,
+      specialite:specialite||null,
+      actif:true,createdAt:serverTimestamp(),derniere_connexion:null,createdBy:RH_EMAIL
+    });
+    counters[role]=(counters[role]||0)+1;
+    lastCode=code;
+    document.getElementById('code-val').textContent        = code;
+    document.getElementById('code-agent-name').textContent = nom+(specialite?` — ${specialite}`:'');
+    document.getElementById('code-email').textContent      = email;
+    document.getElementById('code-interface').textContent  = ROLE_IFACE[role]||'—';
+    document.getElementById('code-role').textContent       = (ROLE_LABELS[role]||role)+(specialite?` (${specialite})`:'');
+    document.getElementById('modal-code').classList.add('show');
+    ['new-nom','new-email','new-tel','new-zone'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('new-role').value='';
+    document.getElementById('new-specialite').value='';
+    document.getElementById('specialite-wrap').style.display='none';
+    document.getElementById('ops-info-wrap').style.display='none';
+    document.getElementById('code-preview').textContent='—';
+    window._code='';
+    toast('✅ Agent créé !','#2E7D32');
+    await loadCounters(); await loadDashboard();
+  }catch(e){ msg.style.color='#C62828'; msg.textContent='❌ '+e.message; }
+  finally{ btn.disabled=false; btn.textContent='✅ Créer l\'agent'; }
+};
+
+window.copyCode = function(){
+  navigator.clipboard.writeText(lastCode)
+    .then(()=>toast('📋 Code copié !','#2E7D32'))
+    .catch(()=>toast('Copiez : '+lastCode,'#E65100'));
+};
+
+// ── Dashboard ──
+async function loadDashboard(){
+  try{
+    const snap = await getDocs(collection(db,'agents'));
+    agentsCache = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const total  = agentsCache.length;
+    const actifs = agentsCache.filter(a=>a.actif!==false).length;
+    const livr   = agentsCache.filter(a=>a.role==='livreur').length;
+    const now    = Date.now();
+    const onl    = agentsCache.filter(a=>a.derniere_connexion&&(now-a.derniere_connexion.toMillis())<15*60*1000);
+    document.getElementById('kpi-total').textContent   = total;
+    document.getElementById('kpi-actifs').textContent  = actifs;
+    document.getElementById('kpi-online').textContent  = onl.length;
+    document.getElementById('kpi-livr').textContent    = livr;
+    document.getElementById('badge-online').textContent = onl.length;
+    document.getElementById('badge-agents').textContent = total;
+    const rc={};
+    agentsCache.forEach(a=>{const r=a.role||'agent';rc[r]=(rc[r]||0)+1;});
+    document.getElementById('role-bars').innerHTML=Object.entries(rc).map(([r,n])=>`
+      <div class="bar-row">
+        <div class="bar-top"><span>${ROLE_LABELS[r]||r}</span><span style="color:var(--light)">${n} agent${n>1?'s':''}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${total?Math.round(n/total*100):0}%"></div></div>
+      </div>`).join('');
+    const sorted=[...agentsCache].sort((a,b)=>(b.createdAt?.toMillis()||0)-(a.createdAt?.toMillis()||0)).slice(0,5);
+    document.getElementById('recent-agents').innerHTML=sorted.length
+      ? sorted.map(a=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bg);">
+          <div class="a-av">${a.nom?.charAt(0)||'?'}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:var(--dark);">${a.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--light);">${a.email||''}</div>
+          </div>
+          <span class="pill ${rolePill(a.role)}">${(ROLE_LABELS[a.role]||a.role).split(' ')[0]}</span>
+          <span class="a-code">${a.code||'—'}</span>
+        </div>`).join('')
+      : '<div class="empty-msg">Aucun agent.</div>';
+  }catch(e){ toast('❌ Erreur dashboard','#C62828'); }
+}
+window.loadDashboard=loadDashboard;
+
+// ── Agents ──
+async function loadAgents(){
+  document.getElementById('agents-desktop').innerHTML='<div class="empty-msg"><div class="spinner"></div></div>';
+  document.getElementById('agents-mobile').innerHTML='';
+  try{
+    const snap=await getDocs(collection(db,'agents'));
+    agentsCache=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderAgents();
+  }catch(e){ document.getElementById('agents-desktop').innerHTML='<div class="empty-msg">Erreur.</div>'; }
+}
+window.loadAgents=loadAgents;
+
+function renderAgents(){
+  let list=agentsCache;
+  if(filtreRole!=='all') list=list.filter(a=>a.role===filtreRole);
+  if(filtreSearch) list=list.filter(a=>{
+    const s=filtreSearch.toLowerCase();
+    return(a.nom||'').toLowerCase().includes(s)||(a.email||'').toLowerCase().includes(s)||(a.code||'').toLowerCase().includes(s);
+  });
+  const now=Date.now();
+  const dEl=document.getElementById('agents-desktop');
+  const mEl=document.getElementById('agents-mobile');
+  if(!list.length){ dEl.innerHTML='<div class="empty-msg">Aucun agent.</div>'; mEl.innerHTML=''; return; }
+  dEl.innerHTML=list.map(a=>{
+    const onl=a.derniere_connexion&&(now-a.derniere_connexion.toMillis())<15*60*1000;
+    const spec=a.specialite?`<div style="font-size:9px;color:var(--light);margin-top:2px;">🔧 ${a.specialite}</div>`:'';
+    return`<div class="agent-row">
+      <div><div class="a-av">${a.nom?.charAt(0)||'?'}</div></div>
+      <div><div class="a-name">${a.nom||'—'}</div><div class="a-email">${a.email||''}</div><div class="a-code">${a.code||'—'}</div></div>
+      <div><span class="pill ${rolePill(a.role)}">${ROLE_LABELS[a.role]||a.role}</span>${spec}</div>
+      <div style="font-size:12px;color:var(--mid);">${a.zone||'—'}</div>
+      <div><span class="pill ${a.actif!==false?'p-actif':'p-inactif'}">${a.actif!==false?'Actif':'Inactif'}</span></div>
+      <div><span class="pill ${onl?'p-online':'p-offline'}">${onl?'🟢 Connecté':'⚫ Hors ligne'}</span></div>
+      <div class="act-btns">
+        <button class="act-v" onclick="viewAgent('${a.id}')">👁</button>
+        <button class="act-e" onclick="openEdit('${a.id}')">✏️</button>
+        <button class="act-t ${a.actif!==false?'act-dis':'act-en'}" onclick="toggleAgent('${a.id}',${a.actif!==false})">${a.actif!==false?'Désactiver':'Activer'}</button>
+        <button class="act-d" onclick="delAgent('${a.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  mEl.innerHTML=list.map(a=>{
+    const onl=a.derniere_connexion&&(now-a.derniere_connexion.toMillis())<15*60*1000;
+    return`<div class="acm">
+      <div class="acm-h">
+        <div class="a-av">${a.nom?.charAt(0)||'?'}</div>
+        <div class="acm-info">
+          <div class="a-name">${a.nom||'—'}</div>
+          <div class="a-email">${a.email||''}</div>
+          <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">
+            <span class="pill ${rolePill(a.role)}">${(ROLE_LABELS[a.role]||a.role).split(' ')[0]}</span>
+            <span class="a-code">${a.code||'—'}</span>
+            <span class="pill ${onl?'p-online':'p-offline'}">${onl?'🟢':'⚫'}</span>
+          </div>
+          ${a.specialite?`<div style="font-size:10px;color:var(--light);margin-top:3px;">🔧 ${a.specialite}</div>`:''}
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--mid);">📍 ${a.zone||'Zone non définie'}</div>
+      <div class="acm-acts">
+        <button class="act-v" onclick="viewAgent('${a.id}')">👁 Voir</button>
+        <button class="act-e" onclick="openEdit('${a.id}')">✏️</button>
+        <button class="act-t ${a.actif!==false?'act-dis':'act-en'}" onclick="toggleAgent('${a.id}',${a.actif!==false})">${a.actif!==false?'Désactiver':'Activer'}</button>
+        <button class="act-d" onclick="delAgent('${a.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.filterAgents=function(role,btn){filtreRole=role;document.querySelectorAll('#section-agents .fbtn').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderAgents();};
+window.searchAgents=function(v){filtreSearch=v;renderAgents();};
+
+// ── Voir agent ──
+window.viewAgent=function(uid){
+  const a=agentsCache.find(x=>x.id===uid); if(!a) return;
+  const now=Date.now();
+  const onl=a.derniere_connexion&&(now-a.derniere_connexion.toMillis())<15*60*1000;
+  document.getElementById('mv-title').textContent='👤 '+a.nom;
+  document.getElementById('mv-content').innerHTML=`
+    <div class="modal-row"><div class="modal-key">Email</div><div class="modal-val">${a.email||'—'}</div></div>
+    <div class="modal-row"><div class="modal-key">Rôle</div><div class="modal-val">${ROLE_LABELS[a.role]||a.role}</div></div>
+    ${a.specialite?`<div class="modal-row"><div class="modal-key">Spécialité</div><div class="modal-val">🔧 ${a.specialite}</div></div>`:''}
+    <div class="modal-row"><div class="modal-key">Code d'accès</div><div class="modal-val" style="font-family:monospace;font-size:20px;font-weight:900;color:var(--blue);">${a.code||'—'}</div></div>
+    <div class="modal-row"><div class="modal-key">Zone</div><div class="modal-val">${a.zone||'—'}</div></div>
+    <div class="modal-row"><div class="modal-key">Téléphone</div><div class="modal-val">${a.telephone||'—'}</div></div>
+    <div class="modal-row"><div class="modal-key">Statut</div><div class="modal-val">${a.actif!==false?'✅ Actif':'❌ Inactif'}</div></div>
+    <div class="modal-row"><div class="modal-key">En ligne</div><div class="modal-val">${onl?'🟢 Maintenant':'⚫ Non'}</div></div>
+    <div class="modal-row"><div class="modal-key">Interface</div><div class="modal-val">${ROLE_IFACE[a.role]||'—'}</div></div>
+    ${a.role==='ops'?`<div style="background:#E0F2F1;border-radius:10px;padding:12px;margin-top:10px;font-size:11px;color:#004D40;line-height:1.8;">
+      <b>⚙️ Missions :</b><br/>
+      • Gérer les annonces (validation, mise en ligne, suivi)<br/>
+      • Coordonner les visites de propriétés avec acheteurs<br/>
+      • Assurer le suivi des commandes sur la plateforme<br/>
+      • Gérer les relations partenaires (immo, notaires, restaurants, sociétés…)<br/>
+      • Optimiser les processus pour améliorer les ventes
+    </div>`:''}`;
+  document.getElementById('mv-edit-btn').onclick=()=>{closeModal('modal-view');openEdit(uid);};
+  document.getElementById('modal-view').classList.add('show');
+};
+
+// ── Modifier ──
+window.openEdit=function(uid){
+  const a=agentsCache.find(x=>x.id===uid); if(!a) return;
+  document.getElementById('edit-uid').value        = uid;
+  document.getElementById('edit-nom').value        = a.nom||'';
+  document.getElementById('edit-tel').value        = a.telephone||'';
+  document.getElementById('edit-role').value       = a.role||'livreur';
+  document.getElementById('edit-zone').value       = a.zone||'';
+  document.getElementById('edit-specialite').value = a.specialite||'';
+  document.getElementById('edit-specialite-wrap').style.display = a.role==='depannage'?'block':'none';
+  document.getElementById('edit-msg').textContent  = '';
+  document.getElementById('modal-edit').classList.add('show');
+};
+window.saveEdit=async function(){
+  const uid       = document.getElementById('edit-uid').value;
+  const nom       = document.getElementById('edit-nom').value.trim();
+  const tel       = document.getElementById('edit-tel').value.trim();
+  const role      = document.getElementById('edit-role').value;
+  const zone      = document.getElementById('edit-zone').value.trim();
+  const specialite = role==='depannage'?document.getElementById('edit-specialite').value:'';
+  const msg       = document.getElementById('edit-msg');
+  if(!nom){ msg.style.color='#C62828'; msg.textContent='⚠️ Nom obligatoire.'; return; }
+  if(role==='depannage'&&!specialite){ msg.style.color='#C62828'; msg.textContent='⚠️ Spécialité obligatoire.'; return; }
+  try{
+    await updateDoc(doc(db,'agents',uid),{nom,telephone:tel,role,zone,specialite:specialite||null,updatedAt:serverTimestamp()});
+    const a=agentsCache.find(x=>x.id===uid);
+    if(a){a.nom=nom;a.telephone=tel;a.role=role;a.zone=zone;a.specialite=specialite;}
+    toast('✅ Agent modifié !','#2E7D32'); closeModal('modal-edit'); renderAgents();
+  }catch(e){ msg.style.color='#C62828'; msg.textContent='❌ '+e.message; }
+};
+
+// ── Toggle / Delete ──
+window.toggleAgent=async function(uid,isActif){
+  if(!confirm(isActif?'Désactiver cet agent ?':'Réactiver cet agent ?')) return;
+  try{
+    await updateDoc(doc(db,'agents',uid),{actif:!isActif,updatedAt:serverTimestamp()});
+    const a=agentsCache.find(x=>x.id===uid); if(a) a.actif=!isActif;
+    toast(isActif?'❌ Agent désactivé':'✅ Agent réactivé','#1A1A2E');
+    renderAgents(); loadDashboard();
+  }catch(e){ toast('❌ Erreur','#C62828'); }
+};
+window.delAgent=async function(uid){
+  const a=agentsCache.find(x=>x.id===uid);
+  if(!confirm(`Supprimer ${a?.nom||'cet agent'} ?\n⚠️ Son compte Firebase Auth restera actif.`)) return;
+  try{
+    await deleteDoc(doc(db,'agents',uid));
+    agentsCache=agentsCache.filter(x=>x.id!==uid);
+    toast('🗑 Supprimé','#C62828'); renderAgents(); loadDashboard();
+  }catch(e){ toast('❌ Erreur','#C62828'); }
+};
+
+// ── En ligne ──
+async function loadOnline(){
+  const grid=document.getElementById('online-grid');
+  grid.innerHTML='<div class="empty-msg"><div class="spinner"></div></div>';
+  try{
+    const snap=await getDocs(collection(db,'agents'));
+    const all=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const now=Date.now();
+    const onl=all.filter(a=>a.derniere_connexion&&(now-a.derniere_connexion.toMillis())<15*60*1000&&a.actif!==false);
+    document.getElementById('badge-online').textContent=onl.length;
+    if(!onl.length){ grid.innerHTML='<div class="empty-msg" style="grid-column:1/-1">🌙 Aucun agent en ligne actuellement.</div>'; return; }
+    grid.innerHTML=onl.map(a=>{
+      const mins=Math.round((now-a.derniere_connexion.toMillis())/60000);
+      return`<div class="online-card">
+        <div class="online-dot"></div>
+        <div class="online-av">${a.nom?.charAt(0)||'?'}</div>
+        <div class="online-name">${a.nom||'—'}</div>
+        <div class="online-role">${ROLE_LABELS[a.role]||a.role}</div>
+        <div class="online-time">Il y a ${mins===0?'moins d\'1':mins} min</div>
+      </div>`;
+    }).join('');
+  }catch(e){ grid.innerHTML='<div class="empty-msg">Erreur.</div>'; }
+}
+window.loadOnline=loadOnline;
+
+// ── Performances ──
+async function loadPerf(period,btn){
+  if(btn){document.querySelectorAll('#section-perf .fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+  const body=document.getElementById('perf-body');
+  body.innerHTML='<div class="empty-msg"><div class="spinner"></div></div>';
+  try{
+    const[agSnap,ordSnap]=await Promise.all([getDocs(collection(db,'agents')),getDocs(collection(db,'commandes'))]);
+    const livr=agSnap.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.role==='livreur');
+    const orders=ordSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const now=new Date();
+    const filt=orders.filter(o=>{
+      if(!o.createdAt) return false; const d=o.createdAt.toDate();
+      if(period==='today'){const t=new Date(now);t.setHours(0,0,0,0);return d>=t;}
+      if(period==='week'){const t=new Date(now);t.setDate(t.getDate()-7);return d>=t;}
+      const t=new Date(now);t.setDate(1);t.setHours(0,0,0,0);return d>=t;
+    });
+    if(!livr.length){body.innerHTML='<div class="empty-msg">Aucun livreur.</div>';return;}
+    const data=livr.map(l=>{
+      const asgn=filt.filter(o=>o.livreurId===l.id);
+      const done=asgn.filter(o=>o.statut==='Terminée');
+      const taux=asgn.length?Math.round(done.length/asgn.length*100):0;
+      return{...l,total:asgn.length,done:done.length,taux};
+    }).sort((a,b)=>b.done-a.done);
+    const max=Math.max(...data.map(p=>p.done),1);
+    body.innerHTML=data.map(p=>`
+      <div class="perf-row">
+        <div><div style="font-size:13px;font-weight:700;color:var(--dark);">${p.nom||'—'}</div><div style="font-size:11px;color:var(--light);">${p.zone||'—'}</div></div>
+        <div style="font-size:13px;font-weight:700;">${p.done}</div>
+        <div style="font-size:13px;font-weight:700;color:${p.taux>=70?'#2E7D32':p.taux>=40?'#E65100':'#C62828'};">${p.taux}%</div>
+        <div><div class="bar-mini"><div class="bar-mini-fill" style="width:${Math.round(p.done/max*100)}%"></div></div></div>
+      </div>`).join('');
+  }catch(e){body.innerHTML='<div class="empty-msg">Erreur chargement.</div>';}
+}
+window.loadPerf=loadPerf;
+
+// ── Zones ──
+async function loadZones(){
+  const grid=document.getElementById('zones-grid');
+  grid.innerHTML='<div class="empty-msg"><div class="spinner"></div></div>';
+  try{
+    const snap=await getDocs(collection(db,'agents'));
+    const all=snap.docs.map(d=>({id:d.id,...d.data()})).filter(a=>a.actif!==false);
+    const zones={};
+    all.forEach(a=>{const z=a.zone||'Zone non définie';if(!zones[z])zones[z]=[];zones[z].push(a);});
+    if(!Object.keys(zones).length){grid.innerHTML='<div class="empty-msg" style="grid-column:1/-1">Aucune zone définie.</div>';return;}
+    grid.innerHTML=Object.entries(zones).map(([z,agents])=>`
+      <div class="zone-card">
+        <div class="zone-name">📍 ${z}</div>
+        <div class="zone-count">${agents.length} agent${agents.length>1?'s':''}</div>
+        ${agents.slice(0,5).map(a=>`<div class="zone-item">
+          <span style="font-weight:800;min-width:18px;text-align:center;">${a.nom?.charAt(0)||'?'}</span>
+          <span>${a.nom||'—'}</span>
+          <span class="pill ${rolePill(a.role)}" style="font-size:8px;padding:1px 5px;">${a.role}</span>
+        </div>`).join('')}
+        ${agents.length>5?`<div style="font-size:11px;color:var(--light);margin-top:6px;">+${agents.length-5} autre${agents.length-5>1?'s':''}</div>`:''}
+      </div>`).join('');
+  }catch(e){ grid.innerHTML='<div class="empty-msg">Erreur.</div>'; }
+}
+window.loadZones=loadZones;
+
+</script>
+</body>
+</html>
