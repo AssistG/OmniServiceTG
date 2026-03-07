@@ -512,11 +512,11 @@ const SVCS = {
   togo_expertise: {
     name:"Consultances/Expertises", icon:"🧑‍💼", bg:"#EDE7F6", active:false, soon:"16 Mars 2026",
     fields:[]
-  },,
+  },
   immobilier: {
     name:"Service Immobilier", icon:"🏢", bg:"#E8F5E9", active:false, soon:"16 Mars 2026",
     fields:[]
-  },,
+  },
   
   // Services lancés le 07 avril 2026
   clothes: {
