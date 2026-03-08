@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin/comptable/
+Disallow: /admin/rh/
+Disallow: /admin/stats/
+Disallow: /admin/operations/
+Disallow: /agent/
+
+Sitemap: https://omniservice.tg/sitemap.xml
