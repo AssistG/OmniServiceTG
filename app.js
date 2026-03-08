@@ -17,12 +17,12 @@ import {
 
 // ── Config Firebase ──
 const firebaseConfig = {
-  apiKey: "AIzaSyDtDK7-iDRy1E-kjZubjyjkPW7Th33BMyU",
-  authDomain: "omniservicetg-59df3.firebaseapp.com",
-  projectId: "omniservicetg-59df3",
-  storageBucket: "omniservicetg-59df3.firebasestorage.app",
-  messagingSenderId: "196278567761",
-  appId: "1:196278567761:web:4f6416acaab58b67bf4970"
+  apiKey: "AIzaSyD8SidnsUkDMbIc9jA1qxBbuaZpuThNbMI",
+  authDomain: "omniservicetg-17bac.firebaseapp.com",
+  projectId: "omniservicetg-17bac",
+  storageBucket: "omniservicetg-17bac.firebasestorage.app",
+  messagingSenderId: "521668188454",
+  appId: "1:521668188454:web:faa4df2aa0aee5595209e7"
 };
 
 const fbApp = initializeApp(firebaseConfig);
@@ -2176,7 +2176,7 @@ window.selectPay = selectPay;
 // ════════════════════════════════════════════════════════════
 const PAYGATE_CONFIG = {
   merchantId:  'TODO_VOTRE_MERCHANT_ID',  // ← Remplacer après activation PayGate
-  apiKey:      'TODO_VOTRE_API_KEY',      // ← Remplacer après activation PayGate
+  apiKey:      'b8217d22-5b2f-4a6b-a231-fc7dc086326f',
   baseUrl:     'https://api.paygate.africa/v1',
   channels:    { tmoney: 'TMONEY', flooz: 'FLOOZ' },
   callbackUrl: 'https://assistg.github.io/OmniServiceTG/',
