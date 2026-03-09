@@ -2232,7 +2232,7 @@ window.selectPay = selectPay;
 // après activation de votre compte sur paygate.africa
 // ════════════════════════════════════════════════════════════
 const PAYGATE_CONFIG = {
-  merchantId:  'TODO_VOTRE_MERCHANT_ID',  // ← Remplacer après activation PayGate
+  merchantId:  '22890289329',  // ← Remplacer après activation PayGate
   apiKey:      'b8217d22-5b2f-4a6b-a231-fc7dc086326f',
   baseUrl:     'https://api.paygate.africa/v1',
   channels:    { tmoney: 'TMONEY', flooz: 'FLOOZ' },
