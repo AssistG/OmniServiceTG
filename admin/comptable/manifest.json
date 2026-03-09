@@ -1,0 +1,15 @@
+{
+  "name": "OmniService TG — Comptabilité",
+  "short_name": "Compta TG",
+  "description": "Interface comptable OmniService TG",
+  "start_url": "/admin/comptable/",
+  "scope": "/admin/comptable/",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#2E7D32",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "https://omniservice.tg/assets/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "https://omniservice.tg/assets/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
