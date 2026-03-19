@@ -2684,7 +2684,7 @@ function stopSuccessCountdown() {
   }
 }
 
-// ══ submitImmoForm : gère À louer / À vendre ══
+// ══ submitImmoForm : gère tous les cas immo (À louer, À vendre, Gestion, Assistance) ══
 window.submitImmoForm = async function() {
   const currentUser = window._currentUser;
   if (!currentUser) { if (window.openAuthModal) window.openAuthModal('login'); return; }
@@ -2692,9 +2692,6 @@ window.submitImmoForm = async function() {
   const besoin = document.getElementById('immo-ff-besoin')?.value.trim();
   const date   = document.getElementById('immo-ff-date')?.value.trim();
   const notes  = document.getElementById('immo-ff-notes')?.value.trim();
-  const nom    = document.getElementById('immo-form-prestation-name')?.textContent.trim();
-  const cat    = document.getElementById('immo-form-category')?.textContent.trim();
-  const emoji  = document.getElementById('immo-form-hero-emoji')?.textContent.trim();
 
   if (!besoin) {
     const el = document.getElementById('immo-ff-besoin');
@@ -2709,16 +2706,53 @@ window.submitImmoForm = async function() {
   try {
     const db = window._firestoreDb;
     const { collection, serverTimestamp, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+    let serviceName, immoCategorieId, immoCategorieNom, immoPrestation, immoPrestationEmoji, localisation = '', budget = '';
+
+    // Cas Gestion / Assistance (select déroulant)
+    if (window._immoCurrentSelectionOpt) {
+      const { sub, opt } = window._immoCurrentSelectionOpt;
+      if (!opt) {
+        const sel = document.getElementById('immo-ff-type-select');
+        if (sel) sel.style.borderColor = '#F5820A';
+        if (window.showToast) window.showToast('⚠️ Veuillez sélectionner un type', '#F5820A');
+        if (btn) { btn.innerHTML = '📨 Envoyer ma demande'; btn.disabled = false; }
+        return;
+      }
+      const isGestion = sub.id === 'immo_gestion';
+      serviceName          = isGestion ? `Immobilier — Gestion Locative — ${opt.label}` : `Immobilier — Assistance — ${opt.label}`;
+      immoCategorieId      = sub.id;
+      immoCategorieNom     = sub.name;
+      immoPrestation       = opt.label;
+      immoPrestationEmoji  = opt.emoji || '🏢';
+      localisation         = document.getElementById('immo-ff-localisation')?.value.trim() || '';
+      budget               = document.getElementById('immo-ff-budget')?.value.trim() || '';
+      window._immoCurrentSelectionSub = null;
+      window._immoCurrentSelectionOpt = null;
+    } else {
+      // Cas À louer / À vendre — lire depuis le DOM
+      const nom   = document.getElementById('immo-form-prestation-name')?.textContent.trim() || '';
+      const cat   = document.getElementById('immo-form-category')?.textContent.trim() || 'Immobilier';
+      const emoji = document.getElementById('immo-form-hero-emoji')?.textContent.trim() || '🏢';
+      serviceName         = cat + ' — ' + nom;
+      immoCategorieNom    = cat;
+      immoPrestation      = nom;
+      immoPrestationEmoji = emoji;
+    }
+
     const docRef = await addDoc(collection(db, 'commandes'), {
       service:             'immobilier',
-      serviceName:         (cat || 'Immobilier') + ' — ' + (nom || ''),
+      serviceName,
       statut:              'En attente',
-      immoCategorieNom:    cat    || '',
-      immoPrestation:      nom    || '',
-      immoPrestationEmoji: emoji  || '🏢',
+      immoCategorieId:     immoCategorieId   || '',
+      immoCategorieNom:    immoCategorieNom  || '',
+      immoPrestation:      immoPrestation    || '',
+      immoPrestationEmoji: immoPrestationEmoji || '🏢',
       besoin,
-      dateSouhaitee:       date   || '',
-      notes:               notes  || '',
+      localisation,
+      budget,
+      dateSouhaitee:       date  || '',
+      notes:               notes || '',
       uid:                 currentUser.uid,
       clientNom:           currentUser.nom    || '',
       clientPrenom:        currentUser.prenom || '',
@@ -2727,12 +2761,14 @@ window.submitImmoForm = async function() {
       clientVille:         currentUser.ville  || '',
       createdAt:           serverTimestamp()
     });
+
     const succMsg = document.getElementById('succ-msg');
     if (succMsg) succMsg.innerHTML =
-      `Demande <strong style="color:var(--blue)">${nom}</strong> envoyée !<br/>
+      `Demande <strong style="color:var(--blue)">${immoPrestation}</strong> envoyée !<br/>
        Référence : <strong>#${docRef.id.slice(0,8).toUpperCase()}</strong><br/>
        Notre équipe vous contactera très bientôt.<br/>
        <small style="color:var(--light)">Contact : ${currentUser.phone || ''}</small>`;
+
     if (window.showSuccessView) window.showSuccessView();
   } catch(err) {
     console.error(err);
@@ -2741,101 +2777,6 @@ window.submitImmoForm = async function() {
   }
 };
 
-// ══ PATCH submitImmoForm : gère le select déroulant direct (Gestion & Assistance) ══
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    const _origSubmitImmo = window.submitImmoForm;
-    window.submitImmoForm = async function() {
-      // Si on vient du formulaire direct avec select (renderImmoSelection)
-      if (window._immoCurrentSelectionSub) {
-        const currentUser = window._currentUser;
-        if (!currentUser) { if (window.openAuthModal) window.openAuthModal('login'); return; }
-
-        // Vérifier qu'une option a été sélectionnée dans le select
-        if (!window._immoCurrentSelectionOpt) {
-          const sel = document.getElementById('immo-ff-type-select');
-          if (sel) sel.style.borderColor = '#F5820A';
-          if (window.showToast) window.showToast('⚠️ Veuillez sélectionner un type', '#F5820A');
-          return;
-        }
-
-        const { sub, opt } = window._immoCurrentSelectionOpt;
-        const besoin       = document.getElementById('immo-ff-besoin')?.value.trim();
-        const localisation = document.getElementById('immo-ff-localisation')?.value.trim();
-        const budget       = document.getElementById('immo-ff-budget')?.value.trim();
-        const date         = document.getElementById('immo-ff-date')?.value.trim();
-        const notes        = document.getElementById('immo-ff-notes')?.value.trim();
-
-        if (!besoin) {
-          const el = document.getElementById('immo-ff-besoin');
-          if (el) el.style.borderColor = '#F5820A';
-          if (window.showToast) window.showToast('⚠️ Remplissez la description de votre besoin', '#F5820A');
-          return;
-        }
-
-        const btn = document.getElementById('immo-form-submit-btn');
-        if (btn) { btn.innerHTML = '<span class="spinner"></span> Envoi...'; btn.disabled = true; }
-
-        try {
-          const db    = window._firestoreDb;
-          const utils = window._firestoreUtils;
-          const { collection, serverTimestamp, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-
-          const isGestion = sub.id === 'immo_gestion';
-          const serviceName = isGestion
-            ? `Immobilier — Gestion Locative — ${opt.label}`
-            : `Immobilier — Assistance — ${opt.label}`;
-
-          const docRef = await addDoc(collection(db, 'commandes'), {
-            service:           'immobilier',
-            serviceName,
-            statut:            'En attente',
-            immoCategorieId:   sub.id,
-            immoCategorieNom:  sub.name,
-            immoPrestation:    opt.label,
-            immoPrestationEmoji: opt.emoji || '🏢',
-            besoin,
-            localisation:      localisation || '',
-            budget:            budget       || '',
-            dateSouhaitee:     date         || '',
-            notes:             notes        || '',
-            uid:               currentUser.uid,
-            clientNom:         currentUser.nom    || '',
-            clientPrenom:      currentUser.prenom || '',
-            clientGenre:       currentUser.genre  || '',
-            phone:             currentUser.phone  || '',
-            clientVille:       currentUser.ville  || '',
-            createdAt:         serverTimestamp()
-          });
-
-          // Réinitialiser les états
-          window._immoCurrentSelectionSub = null;
-          window._immoCurrentSelectionOpt = null;
-
-          const succMsg = document.getElementById('succ-msg');
-          if (succMsg) succMsg.innerHTML =
-            `Demande <strong style="color:var(--blue)">${opt.label}</strong> envoyée !<br/>
-             Référence : <strong>#${docRef.id.slice(0,8).toUpperCase()}</strong><br/>
-             Notre équipe vous contactera très bientôt.<br/>
-             <small style="color:var(--light)">Contact : ${currentUser.phone || ''}</small>`;
-
-          if (window.showSuccessView) window.showSuccessView();
-        } catch(err) {
-          console.error(err);
-          if (window.showToast) window.showToast('❌ Erreur d\'envoi. Vérifiez votre connexion.', '#C62828');
-          if (btn) { btn.innerHTML = '📨 Envoyer ma demande'; btn.disabled = false; }
-        }
-        return;
-      }
-
-      // Sinon, comportement original (autres sous-services immo)
-      if (_origSubmitImmo) _origSubmitImmo();
-    };
-  }, 600);
-});
-
-// Démarrer le polling et les initialisations
-window.addEventListener('DOMContentLoaded', () => {
   updateNotifBadge();
   renderNotifList();
 
