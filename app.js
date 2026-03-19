@@ -2793,6 +2793,7 @@ function immoFormGoBack() {
 }
 window.immoFormGoBack = immoFormGoBack;
 let currentImmoOption   = null; // mini-prestation sélectionnée
+let currentImmoCategory = null; // catégorie immo courante
 
 function openImmoCategory(kitId, kitNom, kitEmoji, kitDesc, kitCat) {
   if (!currentUser) { openAuthModal('login'); showToast('⚠️ Connectez-vous pour passer une commande', '#F5820A'); return; }
