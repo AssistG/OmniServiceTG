@@ -47,7 +47,7 @@ const CATALOGUE_GPS_SERVICES = ['food','marketplace','omni_drink','clothes','res
 // ════════════════════════════════════════
 
 // Clé API Google Maps (Distance Matrix + Directions)
-const GOOGLE_MAPS_API_KEY = 'VOTRE_CLE_API_GOOGLE_MAPS';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyD8SidnsUkDMbIc9jA1qxBbuaZpuThNbMI';
 
 // Haversine conservée comme fallback UNIQUEMENT si l'API Google échoue
 function haversine(la1,lo1,la2,lo2){
