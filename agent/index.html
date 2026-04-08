@@ -552,8 +552,6 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);colo
       <button class="comm-nav-btn" data-comm="kits">🎁 Kits &amp; Packs</button>
       <button class="comm-nav-btn" data-comm="restaurants">🍽️ Restaurants</button>
       <button class="comm-nav-btn" data-comm="bandeaux">🎨 Publications &amp; Bandeaux</button>
-      <button class="comm-nav-btn" data-comm="mathivik">🚀 Mathivik</button>
-      <button class="comm-nav-btn" data-comm="omega">💼 Omega Conseils</button>
       <button class="comm-nav-btn" data-comm="notifications">🔔 Notifications clients</button>
     </div>
 
@@ -564,8 +562,6 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);colo
           <button class="svc-tab on" data-svc="food">🥘 Produits Locaux/Frais</button>
           <button class="svc-tab" data-svc="clothes">👗 Prêt-à-porter</button>
           <button class="svc-tab" data-svc="omni_drink">🍾 Omni Drink TG</button>
-          <button class="svc-tab" data-svc="avendre">🏷️ À vendre</button>
-          <button class="svc-tab" data-svc="alouer">🔑 À Louer</button>
           <button class="svc-tab" data-svc="marketplace">🛍️ Marketplace</button>
           <button class="svc-tab" data-svc="location_assistance">🤝 Location &amp; Assistance</button>
           <button class="svc-tab" data-svc="immo_construction">🏗️ Construction</button>
@@ -674,73 +670,6 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);colo
         <div class="empty-box"><div class="spinner"></div></div>
       </div>
     </div>
-
-    <!-- ── MATHIVIK ── -->
-    <div id="comm-section-mathivik" class="comm-section">
-      <div id="mathivik-view-list">
-        <div class="comm-card-hdr" style="background:#fff;border-radius:16px;box-shadow:var(--sh);margin-bottom:14px">
-          <div class="comm-card-title">🚀 Mathivik — Packs &amp; Formations</div>
-          <button class="btn-add" id="btn-new-mathivik-pack">+ Créer un pack</button>
-        </div>
-        <div class="rst-grid" id="mathivik-packs-grid">
-          <div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner"></div></div>
-        </div>
-      </div>
-      <div id="mathivik-view-articles" style="display:none">
-        <div class="menu-panel-hdr">
-          <button class="menu-back-btn" onclick="showPackView('mathivik','list')">← Retour</button>
-          <div id="mathivik-pack-emoji" style="font-size:26px">📦</div>
-          <div>
-            <div id="mathivik-pack-name" style="font-size:14px;font-weight:700;color:var(--dark)">Pack</div>
-            <div style="font-size:11px;color:var(--light)">Articles inclus dans ce pack</div>
-          </div>
-        </div>
-        <div class="comm-card" style="border-radius:0 0 16px 16px">
-          <div class="comm-card-hdr">
-            <div class="comm-card-title" id="mathivik-art-panel-title">Articles du pack</div>
-            <button class="btn-add" id="btn-new-mathivik-art">+ Ajouter un article</button>
-          </div>
-          <div id="mathivik-art-table">
-            <div class="art-table-row art-table-head"><div></div><div>Article</div><div>Qté / Unité</div><div>Actions</div></div>
-            <div style="text-align:center;padding:30px"><div class="spinner"></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── OMEGA CONSEILS ── -->
-    <div id="comm-section-omega" class="comm-section">
-      <div id="omega-view-list">
-        <div class="comm-card-hdr" style="background:#fff;border-radius:16px;box-shadow:var(--sh);margin-bottom:14px">
-          <div class="comm-card-title">💼 Omega Conseils — Packs</div>
-          <button class="btn-add" id="btn-new-omega-pack">+ Créer un pack</button>
-        </div>
-        <div class="rst-grid" id="omega-packs-grid">
-          <div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner"></div></div>
-        </div>
-      </div>
-      <div id="omega-view-articles" style="display:none">
-        <div class="menu-panel-hdr">
-          <button class="menu-back-btn" onclick="showPackView('omega_conseil','list')">← Retour</button>
-          <div id="omega-pack-emoji" style="font-size:26px">📦</div>
-          <div>
-            <div id="omega-pack-name" style="font-size:14px;font-weight:700;color:var(--dark)">Pack</div>
-            <div style="font-size:11px;color:var(--light)">Articles inclus dans ce pack</div>
-          </div>
-        </div>
-        <div class="comm-card" style="border-radius:0 0 16px 16px">
-          <div class="comm-card-hdr">
-            <div class="comm-card-title" id="omega-art-panel-title">Articles du pack</div>
-            <button class="btn-add" id="btn-new-omega-art">+ Ajouter un article</button>
-          </div>
-          <div id="omega-art-table">
-            <div class="art-table-row art-table-head"><div></div><div>Article</div><div>Qté / Unité</div><div>Actions</div></div>
-            <div style="text-align:center;padding:30px"><div class="spinner"></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ── NOTIFICATIONS CLIENTS ── -->
     <div id="comm-section-notifications" class="comm-section">
       <div class="settings-card" style="max-width:600px;margin-bottom:24px">
@@ -1088,33 +1017,6 @@ html,body{height:100%;font-family:'Poppins',sans-serif;background:var(--bg);colo
 
     <button class="modal-save-btn" id="bandeau-save-btn">💾 Enregistrer</button>
     <div class="l-err" id="bandeau-err"></div>
-  </div>
-</div>
-
-<!-- Modal Pack (Mathivik / Omega) -->
-<div class="modal-overlay" id="pack-modal" onclick="if(event.target===this)this.classList.remove('show')">
-  <div class="modal">
-    <button class="modal-close" onclick="document.getElementById('pack-modal').classList.remove('show')">✕</button>
-    <div class="modal-title" id="pack-modal-title">Créer un pack</div>
-    <input type="hidden" id="pack-id"/>
-    <input type="hidden" id="pack-brand"/>
-    <div id="pack-std-info" style="display:none;background:linear-gradient(135deg,#E3F2FD,#EDE7F6);border:1.5px solid #90CAF9;border-radius:11px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1A237E;line-height:1.6">
-      📌 <strong>Pack standard</strong> — Vos modifications s'appliqueront côté client et remplaceront la version par défaut.
-    </div>
-    <div style="display:grid;grid-template-columns:74px 1fr;gap:10px">
-      <div><label class="f-label">Emoji</label><input type="text" class="f-inp" id="pack-emoji" placeholder="📦" maxlength="4"/></div>
-      <div><label class="f-label">Nom *</label><input type="text" class="f-inp" id="pack-nom" placeholder="Ex : Pack Entrepreneur Pro"/></div>
-    </div>
-    <label class="f-label">Description</label>
-    <textarea class="f-ta" id="pack-desc" placeholder="Décrivez ce pack..."></textarea>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><label class="f-label">Prix (FCFA)</label><input type="number" class="f-inp" id="pack-prix" placeholder="50000"/></div>
-      <div><label class="f-label">Durée / Période</label><input type="text" class="f-inp" id="pack-duree" placeholder="Ex : 3 mois"/></div>
-    </div>
-    <label class="f-label">Ordre d'affichage</label>
-    <input type="number" class="f-inp" id="pack-ordre" value="1"/>
-    <button class="modal-save-btn" id="pack-save-btn">💾 Enregistrer le pack</button>
-    <div class="l-err" id="pack-err"></div>
   </div>
 </div>
 
