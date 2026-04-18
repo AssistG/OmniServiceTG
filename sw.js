@@ -1,9 +1,9 @@
 /* ══════════════════════════════════════════
    OmniService TG — Service Worker (PWA)
-   v6 — domaine omniservice.tg
+   v7 — domaine omniservice.tg
    ══════════════════════════════════════════ */
 
-const CACHE_NAME = 'omniservice-v6';
+const CACHE_NAME = 'omniservice-v7';
 
 const ASSETS_TO_CACHE = [
   '/',
