@@ -4424,7 +4424,16 @@ function _stopNotifPolling() {
       return;
     }
 
-    // 5. Sur home : double appui (5s) pour quitter
+    // 5. Uniquement sur home : double appui (5s) pour quitter
+    // Vérification stricte : si on n'est PAS sur home, on y va et c'est tout.
+    if (_activeTab() !== 'home') {
+      goTab('home');
+      _backStack.pop(); // goTab a poussé → on retire ce push indésirable
+      _exitPending = false;
+      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+      return;
+    }
+
     if (!_exitPending) {
       _exitPending = true;
       _showExitToast();
@@ -4432,9 +4441,16 @@ function _stopNotifPolling() {
       return;
     }
 
-    // 6. Deuxième appui confirmé : quitter réellement
-    // On retire le dernier pushState qu'on vient de faire (étape 1)
-    // pour laisser le navigateur reculer naturellement.
+    // 6. Deuxième appui confirmé ET on est bien sur home : quitter
+    // Vérification finale absolue — on ne sort QUE depuis home.
+    if (_activeTab() !== 'home') {
+      _exitPending = false;
+      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+      goTab('home');
+      _backStack.pop();
+      return;
+    }
+
     _exitPending = false;
     if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
     history.go(-2);
