@@ -4279,63 +4279,42 @@ function _stopNotifPolling() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// GESTION DU BOUTON RETOUR PHYSIQUE — PWA Android
+// BOUTON RETOUR PHYSIQUE — PWA Android
 //
-// Règles :
-//  - Modale ouverte → la fermer
-//  - Dans les vues services → remonter étape par étape
-//  - Sur un onglet (orders, profile, about) → revenir à home
-//  - Sur home → sortir de l'application (1 seul appui suffit)
+// Principe : on simule exactement le clic sur le bouton retour
+// déjà présent dans chaque vue. Aucune logique de navigation
+// dupliquée — on réutilise 100% ce qui existe déjà.
 //
-// Méthode : lecture directe du DOM, 0 pile maison,
-// 0 modification des fonctions existantes.
+// Depuis home → quitter l'app (1 seul appui, pas de confirmation)
 // ═══════════════════════════════════════════════════════════
 (function () {
   'use strict';
 
-  // Onglet actif
-  function getTab() {
+  // Onglet actuellement actif
+  function activeTab() {
     var el = document.querySelector('.btab.on');
     return el ? el.id.replace('t-', '') : 'home';
   }
 
-  // Vue services active
-  function getView() {
-    var views = ['payment','delivery','form','immo-form','catalogue',
-                 'kit-detail','immo-options','kits','restaurants','success','list'];
-    for (var i = 0; i < views.length; i++) {
-      var el = document.getElementById('view-' + views[i]);
-      if (el && el.style.display === 'block') return views[i];
+  // Vue services actuellement visible (display:block)
+  function activeView() {
+    var vs = ['payment','delivery','form','immo-form','catalogue',
+              'kit-detail','immo-options','kits','restaurants','success','list'];
+    for (var i = 0; i < vs.length; i++) {
+      var el = document.getElementById('view-' + vs[i]);
+      if (el && el.style.display === 'block') return vs[i];
     }
     return null;
   }
 
-  // Aller visuellement sur home sans appeler goTab
-  // (goTab('services') force showView('list'), on évite ça)
-  function goHome() {
-    ['home','services','orders','about','profile'].forEach(function(t) {
-      var p = document.getElementById('p-' + t);
-      if (p) p.classList.remove('on');
-      var b = document.getElementById('t-' + t);
-      if (b) b.classList.remove('on');
-      var n = document.getElementById('nl-' + t);
-      if (n) n.classList.remove('on');
-    });
-    var p = document.getElementById('p-home');
-    if (p) p.classList.add('on');
-    var b = document.getElementById('t-home');
-    if (b) b.classList.add('on');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // Ferme la première modale/overlay visible, retourne true si trouvée
+  // Ferme la première modale/overlay visible
   function closeModal() {
     var n = document.getElementById('notif-panel');
     if (n && n.style.display === 'flex') { n.style.display = 'none'; return true; }
     var a = document.getElementById('auth-modal');
     if (a && a.style.display === 'flex') { a.style.display = 'none'; return true; }
-    var pr = document.getElementById('privacy-modal');
-    if (pr && pr.classList.contains('open')) { pr.classList.remove('open'); return true; }
+    var p = document.getElementById('privacy-modal');
+    if (p && p.classList.contains('open')) { p.classList.remove('open'); return true; }
     var c = document.getElementById('cancel-order-modal');
     if (c && c.style.display === 'flex') { c.style.display = 'none'; return true; }
     var u = document.getElementById('ussd-overlay');
@@ -4345,59 +4324,44 @@ function _stopNotifPolling() {
     var s = document.getElementById('security-type-modal');
     if (s && s.style.display === 'flex') { s.style.display = 'none'; return true; }
     var pays = document.querySelectorAll('.pay-modal-overlay.show');
-    if (pays.length) { pays.forEach(function(e) { e.classList.remove('show'); }); return true; }
+    if (pays.length) { pays.forEach(function(e){ e.classList.remove('show'); }); return true; }
     return false;
   }
 
-  // Retourne true si on a pu reculer d'une étape, false si on est déjà sur home
-  function goBack() {
-    var tab  = getTab();
-    var view = getView();
+  // Cliquer sur le bouton retour de la vue active.
+  // Retourne true si une action a été faite, false si on est sur home.
+  function handleBack() {
 
-    // Modale → la fermer
+    // 1. Modale ouverte → la fermer
     if (closeModal()) return true;
 
-    // Onglet autre que home/services → aller sur home
-    if (tab !== 'home' && tab !== 'services') {
-      goHome();
+    var tab  = activeTab();
+    var view = activeView();
+
+    // 2. Dans les vues services → cliquer le bouton retour existant
+    if (tab === 'services' && view) {
+      // Chaque vue a son bouton .back-btn — on le clique directement
+      var viewEl = document.getElementById('view-' + view);
+      if (viewEl) {
+        var btn = viewEl.querySelector('.back-btn');
+        if (btn) { btn.click(); return true; }
+      }
+      // Fallback si pas de .back-btn : revenir à home
+      goTab('home');
       return true;
     }
 
-    // Dans les services → remonter vue par vue
-    if (tab === 'services' && view) {
-      if (view === 'payment') { showView('delivery'); return true; }
-      if (view === 'delivery') { showView('form'); return true; }
-      if (view === 'success') { goHome(); return true; }
-      if (view === 'immo-form') {
-        var ib = document.getElementById('immo-form-back-btn');
-        if (ib && typeof ib.onclick === 'function') { ib.onclick(); return true; }
-        showView('immo-options'); return true;
-      }
-      if (view === 'catalogue') {
-        var cb = document.getElementById('catalogue-back-btn');
-        if (cb && typeof cb.onclick === 'function') { cb.onclick(); return true; }
-        showView('list'); return true;
-      }
-      if (view === 'immo-options') {
-        var ob = document.getElementById('immo-options-back-btn');
-        if (ob && typeof ob.onclick === 'function') { ob.onclick(); return true; }
-        showView('list'); return true;
-      }
-      if (view === 'form')         { showView('list'); return true; }
-      if (view === 'kit-detail')   { showView('kits'); return true; }
-      if (view === 'kits')         { showView('list'); return true; }
-      if (view === 'restaurants')  { showView('list'); return true; }
-      if (view === 'list')         { goHome(); return true; }
+    // 3. Sur un onglet autre que home → cliquer le bouton home de la nav
+    if (tab !== 'home') {
+      goTab('home');
+      return true;
     }
 
-    // On est sur home → sortie
+    // 4. Sur home → laisser quitter
     return false;
   }
 
-  // Initialisation : 1 seul pushState sentinel.
-  // PAS de replaceState — on veut qu'un seul appui depuis home
-  // dépile ce sentinel et laisse le navigateur revenir à la page
-  // précédente (ce qui ferme l'app en mode PWA / standalone).
+  // Initialisation : 1 seul pushState pour intercepter le premier appui
   function init() {
     history.pushState({ omni: 'sentinel' }, '');
   }
@@ -4409,14 +4373,13 @@ function _stopNotifPolling() {
 
   // Gestionnaire popstate
   window.addEventListener('popstate', function () {
-    var canGoBack = goBack();
-
-    if (canGoBack) {
-      // On reste dans l'app → remettre sentinel
+    var stayed = handleBack();
+    if (stayed) {
+      // On reste dans l'app → remettre le sentinel
       history.pushState({ omni: 'sentinel' }, '');
     }
-    // Sinon : on est sur home → on ne remet PAS sentinel
-    // → le navigateur recule sur "base" et ferme l'app
+    // stayed === false = on est sur home → on ne remet pas sentinel
+    // → le navigateur recule naturellement et ferme l'app
   });
 
 }());
