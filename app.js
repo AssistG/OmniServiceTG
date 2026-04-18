@@ -4395,17 +4395,24 @@ function _stopNotifPolling() {
   // ── Gestionnaire popstate ──
   window.addEventListener('popstate', function() {
 
-    // 1. Toujours repousser un état pour rester dans l'app
+    // Si la sortie est confirmée (2e appui sur home) → on laisse le navigateur
+    // partir sans repousser d'état. C'est le SEUL cas où on ne pushState pas.
+    if (_exitReady) {
+      _exitReady = false;
+      return; // laisser le navigateur quitter
+    }
+
+    // Dans TOUS les autres cas : repousser immédiatement pour rester dans l'app.
     history.pushState({ omniBack: true }, '');
 
-    // 2. Fermer une modale ouverte → fin, rien d'autre
+    // 1. Fermer une modale ouverte → fin
     if (_closeModal()) {
       _exitPending = false;
       if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
       return;
     }
 
-    // 3. Dépiler et exécuter le retour
+    // 2. Dépiler et exécuter le retour
     if (_backStack.length > 0) {
       var fn = _backStack.pop();
       if (typeof fn === 'function') fn();
@@ -4414,18 +4421,7 @@ function _stopNotifPolling() {
       return;
     }
 
-    // 4. Pile vide mais pas sur home → forcer home (filet de sécurité)
-    if (_activeTab() !== 'home') {
-      goTab('home');
-      // goTab vient de pousser dans _backStack → on l'enlève (on ne veut pas de retour depuis home)
-      _backStack.pop();
-      _exitPending = false;
-      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
-      return;
-    }
-
-    // 5. Uniquement sur home : double appui (5s) pour quitter
-    // Vérification stricte : si on n'est PAS sur home, on y va et c'est tout.
+    // 3. Pile vide mais pas sur home → forcer home (filet de sécurité)
     if (_activeTab() !== 'home') {
       goTab('home');
       _backStack.pop(); // goTab a poussé → on retire ce push indésirable
@@ -4434,6 +4430,7 @@ function _stopNotifPolling() {
       return;
     }
 
+    // 4. Sur home — 1er appui : afficher le toast de confirmation (5s)
     if (!_exitPending) {
       _exitPending = true;
       _showExitToast();
@@ -4441,19 +4438,13 @@ function _stopNotifPolling() {
       return;
     }
 
-    // 6. Deuxième appui confirmé ET on est bien sur home : quitter
-    // Vérification finale absolue — on ne sort QUE depuis home.
-    if (_activeTab() !== 'home') {
-      _exitPending = false;
-      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
-      goTab('home');
-      _backStack.pop();
-      return;
-    }
-
+    // 5. Sur home — 2e appui dans les 5s : quitter réellement.
+    // On pose _exitReady = true puis on recule d'un cran dans l'historique.
+    // Le prochain popstate verra _exitReady === true et laissera passer.
     _exitPending = false;
     if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
-    history.go(-2);
+    _exitReady = true;
+    history.go(-1);
   });
 
 })();
