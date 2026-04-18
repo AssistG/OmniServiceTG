@@ -771,25 +771,7 @@ function fmt(n) {
 // ════════════════════════════════════════
 // NAVIGATION TABS
 // ════════════════════════════════════════
-
-// ── Retour physique : pile de navigation ──
-const _backStack = [];
-let _exitPending = false;
-let _exitTimer   = null;
-let _exitReady   = false;
-let _noNavPush = false;  // si true, showView ne poussera pas (évite le double push)
-function navPush(restoreFn) {
-  _backStack.push(restoreFn);
-  history.pushState({ omniBack: true }, '');
-}
-
 function goTab(id) {
-  // Ne pas empiler si on va sur home (c'est la destination finale, pas une étape)
-  const _prevTabEl = document.querySelector('.btab.on');
-  const _prevTab = _prevTabEl ? _prevTabEl.id.replace('t-', '') : 'home';
-  if (id !== 'home' && _prevTab !== id) {
-    navPush(function() { goTab(_prevTab); });
-  }
   document.querySelectorAll(".page").forEach(p => p.classList.remove("on"));
   const page = document.getElementById("p-" + id);
   if (page) page.classList.add("on");
@@ -842,18 +824,6 @@ window.goTab = goTab;
 // ════════════════════════════════════════
 const VIEWS = ['list','restaurants','kits','kit-detail','immo-options','immo-form','catalogue','form','delivery','payment','success'];
 function showView(v) {
-  // Retrouver la vue courante avant de changer
-  const _prevView = (function() {
-    const _VIEWS = ['list','restaurants','kits','kit-detail','immo-options','immo-form','catalogue','form','delivery','payment','success'];
-    for (const _x of _VIEWS) {
-      const _el = document.getElementById('view-' + _x);
-      if (_el && _el.style.display !== 'none' && _el.style.display !== '') return _x;
-    }
-    return null;
-  })();
-  if (_prevView && _prevView !== v && !_noNavPush) {
-    navPush(function() { showView(_prevView); });
-  }
   VIEWS.forEach(x => {
     const el = document.getElementById('view-'+x);
     if (el) el.style.display = x===v ? 'block' : 'none';
@@ -1470,7 +1440,6 @@ window.showTogoExpertiseMenu = showTogoExpertiseMenu;
 
 // ── Niveau 2 : grandes lignes d'un pôle (Mathivick ou Omega) — même vue immo-options ──
 function openConsultancesSubService(subId) {
-  navPush(function() { showTogoExpertiseMenu(); });
   if (!currentUser) { openAuthModal('login'); showToast('⚠️ Connectez-vous pour passer une commande', '#F5820A'); return; }
   const sub = CONSULTANCES_ENVELOPE.subServices.find(s => s.id === subId);
   if (!sub) return;
@@ -1498,13 +1467,12 @@ function openConsultancesSubService(subId) {
       <span style="font-size:20px;color:#E8EAF0">›</span>
     </button>
   `).join('');
-  _noNavPush = true; showView('immo-options'); _noNavPush = false;
+  showView('immo-options');
 }
 window.openConsultancesSubService = openConsultancesSubService;
 
 // ── Niveau 3 : formulaire (vue immo-form, identique à l'immobilier) ──
 function openConsultancesForm(subId, sectionId) {
-  navPush(function() { openConsultancesSubService(subId); });
   if (!currentUser) { openAuthModal('login'); showToast('⚠️ Connectez-vous pour passer une commande', '#F5820A'); return; }
   const sub     = CONSULTANCES_ENVELOPE.subServices.find(s => s.id === subId);
   if (!sub) return;
@@ -1570,7 +1538,7 @@ function openConsultancesForm(subId, sectionId) {
   if (budgetEl)    budgetEl.style.display    = 'none';
   if (budgetLabel) budgetLabel.style.display = 'none';
 
-  _noNavPush = true; showView('immo-form'); _noNavPush = false;
+  showView('immo-form');
 }
 window.openConsultancesForm = openConsultancesForm;
 
@@ -4310,139 +4278,266 @@ function _stopNotifPolling() {
   if (_notifPollTimer) { clearInterval(_notifPollTimer); _notifPollTimer = null; }
 }
 
-// ════════════════════════════════════════
-// GESTIONNAIRE RETOUR PHYSIQUE (Android / PWA)
-// Règles :
-//  1. Ferme toute modale/overlay ouverte en priorité
-//  2. Dépile _backStack et exécute la fonction de retour
-//  3. Si pile vide et pas sur home → force home (filet de sécurité)
-//  4. Si pile vide ET sur home → double appui (5s) pour quitter
-// ════════════════════════════════════════
-(function() {
+// ═══════════════════════════════════════════════════════════
+// GESTION DU BOUTON RETOUR PHYSIQUE — v finale
+//
+// Principe : pas de pile maison, pas de modification des
+// fonctions existantes. On utilise uniquement l'état du DOM
+// pour savoir où on est et décider quoi faire.
+//
+// Mécanisme :
+//  - On maintient toujours 1 entrée "sentinel" dans l'histo-
+//    rique du navigateur via pushState. Quand le bouton retour
+//    est pressé, le navigateur dépile cette entrée et déclenche
+//    "popstate". On remet aussitôt une entrée sentinel (sauf si
+//    on confirme la sortie depuis home).
+//  - À chaque popstate on lit le DOM pour savoir où on est,
+//    et on appelle la fonction de retour appropriée.
+//  - La sortie n'est possible QUE depuis home, après 2 appuis
+//    en moins de 5s.
+// ═══════════════════════════════════════════════════════════
+(function () {
+  'use strict';
 
-  // ── Toast de confirmation ──
-  function _showExitToast() {
+  // ── Lire l'état courant du DOM ──────────────────────────
+  function activeTab() {
+    var el = document.querySelector('.btab.on');
+    return el ? el.id.replace('t-', '') : 'home';
+  }
+
+  function activeView() {
+    var views = ['payment','delivery','form','immo-form','catalogue',
+                 'kit-detail','immo-options','kits','restaurants','success','list'];
+    for (var i = 0; i < views.length; i++) {
+      var el = document.getElementById('view-' + views[i]);
+      if (el && el.style.display === 'block') return views[i];
+    }
+    return null;
+  }
+
+  // ── Fermer la première modale visible ───────────────────
+  function closeTopModal() {
+    var checks = [
+      function() {
+        var el = document.getElementById('notif-panel');
+        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
+      },
+      function() {
+        var el = document.getElementById('auth-modal');
+        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
+      },
+      function() {
+        var el = document.getElementById('privacy-modal');
+        return el && el.classList.contains('open') ? (el.classList.remove('open'), true) : false;
+      },
+      function() {
+        var el = document.getElementById('cancel-order-modal');
+        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
+      },
+      function() {
+        var el = document.getElementById('ussd-overlay');
+        return el && el.classList.contains('show') ? (el.classList.remove('show'), true) : false;
+      },
+      function() {
+        var el = document.getElementById('pg-result-overlay');
+        return el && el.classList.contains('show') ? (el.classList.remove('show'), true) : false;
+      },
+      function() {
+        var el = document.getElementById('security-type-modal');
+        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
+      },
+      function() {
+        var els = document.querySelectorAll('.pay-modal-overlay.show');
+        if (els.length) { els.forEach(function(e){ e.classList.remove('show'); }); return true; }
+        return false;
+      }
+    ];
+    for (var i = 0; i < checks.length; i++) {
+      if (checks[i]()) return true;
+    }
+    return false;
+  }
+
+  // ── Aller en arrière selon la vue active ────────────────
+  function navigateBack() {
+    var tab  = activeTab();
+    var view = activeView();
+
+    // Si on est sur un onglet autre que home → revenir à home
+    if (tab !== 'home' && tab !== 'services') {
+      // Appel direct sans passer par goTab wrappé
+      var tabs = ['home','services','orders','about','profile'];
+      tabs.forEach(function(t) {
+        var p = document.getElementById('p-' + t);
+        if (p) p.classList.remove('on');
+        var b = document.getElementById('t-' + t);
+        if (b) b.classList.remove('on');
+        var n = document.getElementById('nl-' + t);
+        if (n) n.classList.remove('on');
+      });
+      var ph = document.getElementById('p-home');
+      if (ph) ph.classList.add('on');
+      var th = document.getElementById('t-home');
+      if (th) th.classList.add('on');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+
+    // Si on est sur l'onglet services → remonter les vues
+    if (tab === 'services' && view) {
+      // Ordre de remontée : du plus profond vers le moins profond
+      if (view === 'payment') {
+        if (typeof showView === 'function') showView('delivery');
+        return true;
+      }
+      if (view === 'delivery') {
+        if (typeof showView === 'function') showView('form');
+        return true;
+      }
+      if (view === 'success') {
+        if (typeof goTab === 'function') goTab('orders');
+        return true;
+      }
+      if (view === 'immo-form') {
+        // Utiliser le bouton back s'il existe (il contient la fn correcte)
+        var btn = document.getElementById('immo-form-back-btn');
+        if (btn && typeof btn.onclick === 'function') { btn.onclick(); return true; }
+        if (typeof showView === 'function') showView('immo-options');
+        return true;
+      }
+      if (view === 'form') {
+        if (typeof showView === 'function') showView('list');
+        return true;
+      }
+      if (view === 'catalogue') {
+        var cbtn = document.getElementById('catalogue-back-btn');
+        if (cbtn && typeof cbtn.onclick === 'function') { cbtn.onclick(); return true; }
+        if (typeof showView === 'function') showView('list');
+        return true;
+      }
+      if (view === 'immo-options') {
+        var obtn = document.getElementById('immo-options-back-btn');
+        if (obtn && typeof obtn.onclick === 'function') { obtn.onclick(); return true; }
+        if (typeof showView === 'function') showView('list');
+        return true;
+      }
+      if (view === 'kit-detail') {
+        if (typeof showView === 'function') showView('kits');
+        return true;
+      }
+      if (view === 'kits' || view === 'restaurants') {
+        if (typeof showView === 'function') showView('list');
+        return true;
+      }
+      if (view === 'list') {
+        // Retour depuis la liste des services → home
+        var tabs2 = ['home','services','orders','about','profile'];
+        tabs2.forEach(function(t) {
+          var p = document.getElementById('p-' + t);
+          if (p) p.classList.remove('on');
+          var b = document.getElementById('t-' + t);
+          if (b) b.classList.remove('on');
+        });
+        var ph2 = document.getElementById('p-home');
+        if (ph2) ph2.classList.add('on');
+        var th2 = document.getElementById('t-home');
+        if (th2) th2.classList.add('on');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+      }
+    }
+
+    // On est sur home → pas de retour possible ici
+    return false;
+  }
+
+  // ── Toast de confirmation ────────────────────────────────
+  function showExitToast() {
     if (typeof showToast === 'function') {
       showToast('Appuyez encore une fois pour quitter OmniService TG', '#1E6FBE');
       return;
     }
-    let t = document.getElementById('_omni-exit-toast');
+    var t = document.getElementById('_omni_exit_toast');
     if (!t) {
       t = document.createElement('div');
-      t.id = '_omni-exit-toast';
+      t.id = '_omni_exit_toast';
       t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);' +
-        'background:#1E6FBE;color:#fff;padding:12px 24px;border-radius:24px;' +
-        'font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);' +
-        'pointer-events:none;white-space:nowrap;transition:opacity .3s;';
+        'background:#1E6FBE;color:#fff;padding:12px 24px;border-radius:24px;font-size:14px;' +
+        'font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);' +
+        'pointer-events:none;white-space:nowrap;';
       document.body.appendChild(t);
     }
     t.textContent = 'Appuyez encore une fois pour quitter OmniService TG';
     t.style.opacity = '1'; t.style.display = 'block';
     setTimeout(function() {
       t.style.opacity = '0';
-      setTimeout(function() { t.style.display = 'none'; }, 300);
+      setTimeout(function() { t.style.display = 'none'; }, 400);
     }, 5000);
   }
 
-  // ── Ferme la première modale/overlay visible, retourne true si trouvée ──
-  function _closeModal() {
-    // Panel notifications
-    var n = document.getElementById('notif-panel');
-    if (n && n.style.display === 'flex') { n.style.display = 'none'; return true; }
-    // Modale auth
-    var a = document.getElementById('auth-modal');
-    if (a && a.style.display === 'flex') { a.style.display = 'none'; return true; }
-    // Modale confidentialité
-    var p = document.getElementById('privacy-modal');
-    if (p && p.classList.contains('open')) { p.classList.remove('open'); return true; }
-    // Modale annulation commande
-    var c = document.getElementById('cancel-order-modal');
-    if (c && c.style.display === 'flex') { c.style.display = 'none'; return true; }
-    // Modales paiement mobile (.pay-modal-overlay.show)
-    var pays = document.querySelectorAll('.pay-modal-overlay.show');
-    if (pays.length > 0) { pays.forEach(function(el) { el.classList.remove('show'); }); return true; }
-    // Overlay USSD
-    var u = document.getElementById('ussd-overlay');
-    if (u && u.classList.contains('show')) { u.classList.remove('show'); return true; }
-    // Overlay résultat paiement
-    var r = document.getElementById('pg-result-overlay');
-    if (r && r.classList.contains('show')) { r.classList.remove('show'); return true; }
-    // Modale gardiennage/sécurité
-    var s = document.getElementById('security-type-modal');
-    if (s && s.style.display === 'flex') { s.style.display = 'none'; return true; }
-    return false;
-  }
+  // ── État sortie ──────────────────────────────────────────
+  var exitPending = false;
+  var exitTimer   = null;
 
-  // ── Onglet actif courant ──
-  function _activeTab() {
-    var el = document.querySelector('.btab.on');
-    return el ? el.id.replace('t-', '') : 'home';
-  }
-
-  // ── Initialisation : on pose 2 états dans l'historique ──
-  // replaceState sur l'état actuel + pushState sentinel
-  // pour que le premier popstate soit toujours intercepté.
-  function _init() {
-    history.replaceState({ omniBack: true }, '');
-    history.pushState({ omniBack: true }, '');
+  // ── Initialisation ───────────────────────────────────────
+  // On remplace l'état courant puis on en ajoute un.
+  // Ainsi l'historique du navigateur a toujours au moins 2 entrées :
+  //   [état initial] [sentinel]
+  // Quand l'utilisateur appuie retour, le navigateur dépile "sentinel"
+  // et déclenche popstate. On remet aussitôt un sentinel pour le prochain appui.
+  function init() {
+    history.replaceState({ omni: 'base' }, '');
+    history.pushState({ omni: 'sentinel' }, '');
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _init);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    _init();
+    init();
   }
 
-  // ── Gestionnaire popstate ──
-  window.addEventListener('popstate', function() {
+  // ── Gestionnaire popstate ────────────────────────────────
+  window.addEventListener('popstate', function (e) {
 
-    // RÈGLE ABSOLUE : on repousse TOUJOURS un état pour rester dans l'app,
-    // SAUF si on est sur home ET que le 2e appui est confirmé.
-    // On évalue d'abord toutes les conditions AVANT de décider.
-
-    // 1. Fermer une modale ouverte → rester dans l'app sans condition
-    if (_closeModal()) {
-      history.pushState({ omniBack: true }, '');
-      _exitPending = false;
-      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+    // Étape A — modale ouverte : la fermer et remettre sentinel
+    if (closeTopModal()) {
+      history.pushState({ omni: 'sentinel' }, '');
+      exitPending = false;
+      if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
       return;
     }
 
-    // 2. Dépiler et exécuter le retour → rester dans l'app
-    if (_backStack.length > 0) {
-      history.pushState({ omniBack: true }, '');
-      var fn = _backStack.pop();
-      if (typeof fn === 'function') fn();
-      _exitPending = false;
-      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+    // Étape B — on peut naviguer en arrière dans l'app
+    var wentBack = navigateBack();
+    if (wentBack) {
+      history.pushState({ omni: 'sentinel' }, '');
+      exitPending = false;
+      if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
       return;
     }
 
-    // À partir d'ici : pile vide, pas de modale.
-    // On est censé être sur home. Si ce n'est pas le cas → sécurité.
-    if (_activeTab() !== 'home') {
-      history.pushState({ omniBack: true }, '');
-      goTab('home');
-      _backStack.pop(); // goTab a empilé → retirer
-      _exitPending = false;
-      if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+    // Étape C — navigateBack() a retourné false = on est sur home
+    // Vérification de sécurité absolue
+    if (activeTab() !== 'home') {
+      // Ne devrait pas arriver, mais par sécurité : remettre sentinel et stop
+      history.pushState({ omni: 'sentinel' }, '');
       return;
     }
 
-    // On est sur home.
-    // 1er appui → toast, repousser pour rester
-    if (!_exitPending) {
-      history.pushState({ omniBack: true }, '');
-      _exitPending = true;
-      _showExitToast();
-      _exitTimer = setTimeout(function() { _exitPending = false; }, 5000);
+    // Étape D — on est sur home : gestion de la sortie
+    if (!exitPending) {
+      // 1er appui : toast + remettre sentinel pour intercepter le 2e
+      history.pushState({ omni: 'sentinel' }, '');
+      exitPending = true;
+      showExitToast();
+      exitTimer = setTimeout(function() { exitPending = false; }, 5000);
       return;
     }
 
-    // 2e appui sur home dans les 5s → quitter.
-    // On ne pushState PAS → le navigateur recule naturellement et ferme l'app.
-    _exitPending = false;
-    if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
-    // Pas de history.pushState ici → sortie réelle.
+    // Étape E — 2e appui confirmé sur home dans les 5s
+    // On NE remet PAS de sentinel → le navigateur recule sur "base" et quitte
+    exitPending = false;
+    if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
+    // Pas de history.pushState → sortie naturelle
   });
 
-})();
+}());
