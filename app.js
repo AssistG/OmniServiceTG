@@ -4395,25 +4395,21 @@ function _stopNotifPolling() {
   // ── Gestionnaire popstate ──
   window.addEventListener('popstate', function() {
 
-    // Si la sortie est confirmée (2e appui sur home) → on laisse le navigateur
-    // partir sans repousser d'état. C'est le SEUL cas où on ne pushState pas.
-    if (_exitReady) {
-      _exitReady = false;
-      return; // laisser le navigateur quitter
-    }
+    // RÈGLE ABSOLUE : on repousse TOUJOURS un état pour rester dans l'app,
+    // SAUF si on est sur home ET que le 2e appui est confirmé.
+    // On évalue d'abord toutes les conditions AVANT de décider.
 
-    // Dans TOUS les autres cas : repousser immédiatement pour rester dans l'app.
-    history.pushState({ omniBack: true }, '');
-
-    // 1. Fermer une modale ouverte → fin
+    // 1. Fermer une modale ouverte → rester dans l'app sans condition
     if (_closeModal()) {
+      history.pushState({ omniBack: true }, '');
       _exitPending = false;
       if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
       return;
     }
 
-    // 2. Dépiler et exécuter le retour
+    // 2. Dépiler et exécuter le retour → rester dans l'app
     if (_backStack.length > 0) {
+      history.pushState({ omniBack: true }, '');
       var fn = _backStack.pop();
       if (typeof fn === 'function') fn();
       _exitPending = false;
@@ -4421,30 +4417,32 @@ function _stopNotifPolling() {
       return;
     }
 
-    // 3. Pile vide mais pas sur home → forcer home (filet de sécurité)
+    // À partir d'ici : pile vide, pas de modale.
+    // On est censé être sur home. Si ce n'est pas le cas → sécurité.
     if (_activeTab() !== 'home') {
+      history.pushState({ omniBack: true }, '');
       goTab('home');
-      _backStack.pop(); // goTab a poussé → on retire ce push indésirable
+      _backStack.pop(); // goTab a empilé → retirer
       _exitPending = false;
       if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
       return;
     }
 
-    // 4. Sur home — 1er appui : afficher le toast de confirmation (5s)
+    // On est sur home.
+    // 1er appui → toast, repousser pour rester
     if (!_exitPending) {
+      history.pushState({ omniBack: true }, '');
       _exitPending = true;
       _showExitToast();
       _exitTimer = setTimeout(function() { _exitPending = false; }, 5000);
       return;
     }
 
-    // 5. Sur home — 2e appui dans les 5s : quitter réellement.
-    // On pose _exitReady = true puis on recule d'un cran dans l'historique.
-    // Le prochain popstate verra _exitReady === true et laissera passer.
+    // 2e appui sur home dans les 5s → quitter.
+    // On ne pushState PAS → le navigateur recule naturellement et ferme l'app.
     _exitPending = false;
     if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
-    _exitReady = true;
-    history.go(-1);
+    // Pas de history.pushState ici → sortie réelle.
   });
 
 })();
