@@ -4279,33 +4279,28 @@ function _stopNotifPolling() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// GESTION DU BOUTON RETOUR PHYSIQUE — v finale
+// GESTION DU BOUTON RETOUR PHYSIQUE — PWA Android
 //
-// Principe : pas de pile maison, pas de modification des
-// fonctions existantes. On utilise uniquement l'état du DOM
-// pour savoir où on est et décider quoi faire.
+// Règles :
+//  - Modale ouverte → la fermer
+//  - Dans les vues services → remonter étape par étape
+//  - Sur un onglet (orders, profile, about) → revenir à home
+//  - Sur home → sortir de l'application (1 seul appui suffit)
 //
-// Mécanisme :
-//  - On maintient toujours 1 entrée "sentinel" dans l'histo-
-//    rique du navigateur via pushState. Quand le bouton retour
-//    est pressé, le navigateur dépile cette entrée et déclenche
-//    "popstate". On remet aussitôt une entrée sentinel (sauf si
-//    on confirme la sortie depuis home).
-//  - À chaque popstate on lit le DOM pour savoir où on est,
-//    et on appelle la fonction de retour appropriée.
-//  - La sortie n'est possible QUE depuis home, après 2 appuis
-//    en moins de 5s.
+// Méthode : lecture directe du DOM, 0 pile maison,
+// 0 modification des fonctions existantes.
 // ═══════════════════════════════════════════════════════════
 (function () {
   'use strict';
 
-  // ── Lire l'état courant du DOM ──────────────────────────
-  function activeTab() {
+  // Onglet actif
+  function getTab() {
     var el = document.querySelector('.btab.on');
     return el ? el.id.replace('t-', '') : 'home';
   }
 
-  function activeView() {
+  // Vue services active
+  function getView() {
     var views = ['payment','delivery','form','immo-form','catalogue',
                  'kit-detail','immo-options','kits','restaurants','success','list'];
     for (var i = 0; i < views.length; i++) {
@@ -4315,176 +4310,91 @@ function _stopNotifPolling() {
     return null;
   }
 
-  // ── Fermer la première modale visible ───────────────────
-  function closeTopModal() {
-    var checks = [
-      function() {
-        var el = document.getElementById('notif-panel');
-        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
-      },
-      function() {
-        var el = document.getElementById('auth-modal');
-        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
-      },
-      function() {
-        var el = document.getElementById('privacy-modal');
-        return el && el.classList.contains('open') ? (el.classList.remove('open'), true) : false;
-      },
-      function() {
-        var el = document.getElementById('cancel-order-modal');
-        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
-      },
-      function() {
-        var el = document.getElementById('ussd-overlay');
-        return el && el.classList.contains('show') ? (el.classList.remove('show'), true) : false;
-      },
-      function() {
-        var el = document.getElementById('pg-result-overlay');
-        return el && el.classList.contains('show') ? (el.classList.remove('show'), true) : false;
-      },
-      function() {
-        var el = document.getElementById('security-type-modal');
-        return el && el.style.display === 'flex' ? (el.style.display = 'none', true) : false;
-      },
-      function() {
-        var els = document.querySelectorAll('.pay-modal-overlay.show');
-        if (els.length) { els.forEach(function(e){ e.classList.remove('show'); }); return true; }
-        return false;
-      }
-    ];
-    for (var i = 0; i < checks.length; i++) {
-      if (checks[i]()) return true;
-    }
+  // Aller visuellement sur home sans appeler goTab
+  // (goTab('services') force showView('list'), on évite ça)
+  function goHome() {
+    ['home','services','orders','about','profile'].forEach(function(t) {
+      var p = document.getElementById('p-' + t);
+      if (p) p.classList.remove('on');
+      var b = document.getElementById('t-' + t);
+      if (b) b.classList.remove('on');
+      var n = document.getElementById('nl-' + t);
+      if (n) n.classList.remove('on');
+    });
+    var p = document.getElementById('p-home');
+    if (p) p.classList.add('on');
+    var b = document.getElementById('t-home');
+    if (b) b.classList.add('on');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Ferme la première modale/overlay visible, retourne true si trouvée
+  function closeModal() {
+    var n = document.getElementById('notif-panel');
+    if (n && n.style.display === 'flex') { n.style.display = 'none'; return true; }
+    var a = document.getElementById('auth-modal');
+    if (a && a.style.display === 'flex') { a.style.display = 'none'; return true; }
+    var pr = document.getElementById('privacy-modal');
+    if (pr && pr.classList.contains('open')) { pr.classList.remove('open'); return true; }
+    var c = document.getElementById('cancel-order-modal');
+    if (c && c.style.display === 'flex') { c.style.display = 'none'; return true; }
+    var u = document.getElementById('ussd-overlay');
+    if (u && u.classList.contains('show')) { u.classList.remove('show'); return true; }
+    var r = document.getElementById('pg-result-overlay');
+    if (r && r.classList.contains('show')) { r.classList.remove('show'); return true; }
+    var s = document.getElementById('security-type-modal');
+    if (s && s.style.display === 'flex') { s.style.display = 'none'; return true; }
+    var pays = document.querySelectorAll('.pay-modal-overlay.show');
+    if (pays.length) { pays.forEach(function(e) { e.classList.remove('show'); }); return true; }
     return false;
   }
 
-  // ── Aller en arrière selon la vue active ────────────────
-  function navigateBack() {
-    var tab  = activeTab();
-    var view = activeView();
+  // Retourne true si on a pu reculer d'une étape, false si on est déjà sur home
+  function goBack() {
+    var tab  = getTab();
+    var view = getView();
 
-    // Si on est sur un onglet autre que home → revenir à home
+    // Modale → la fermer
+    if (closeModal()) return true;
+
+    // Onglet autre que home/services → aller sur home
     if (tab !== 'home' && tab !== 'services') {
-      // Appel direct sans passer par goTab wrappé
-      var tabs = ['home','services','orders','about','profile'];
-      tabs.forEach(function(t) {
-        var p = document.getElementById('p-' + t);
-        if (p) p.classList.remove('on');
-        var b = document.getElementById('t-' + t);
-        if (b) b.classList.remove('on');
-        var n = document.getElementById('nl-' + t);
-        if (n) n.classList.remove('on');
-      });
-      var ph = document.getElementById('p-home');
-      if (ph) ph.classList.add('on');
-      var th = document.getElementById('t-home');
-      if (th) th.classList.add('on');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      goHome();
       return true;
     }
 
-    // Si on est sur l'onglet services → remonter les vues
+    // Dans les services → remonter vue par vue
     if (tab === 'services' && view) {
-      // Ordre de remontée : du plus profond vers le moins profond
-      if (view === 'payment') {
-        if (typeof showView === 'function') showView('delivery');
-        return true;
-      }
-      if (view === 'delivery') {
-        if (typeof showView === 'function') showView('form');
-        return true;
-      }
-      if (view === 'success') {
-        if (typeof goTab === 'function') goTab('orders');
-        return true;
-      }
+      if (view === 'payment') { showView('delivery'); return true; }
+      if (view === 'delivery') { showView('form'); return true; }
+      if (view === 'success') { goHome(); return true; }
       if (view === 'immo-form') {
-        // Utiliser le bouton back s'il existe (il contient la fn correcte)
-        var btn = document.getElementById('immo-form-back-btn');
-        if (btn && typeof btn.onclick === 'function') { btn.onclick(); return true; }
-        if (typeof showView === 'function') showView('immo-options');
-        return true;
-      }
-      if (view === 'form') {
-        if (typeof showView === 'function') showView('list');
-        return true;
+        var ib = document.getElementById('immo-form-back-btn');
+        if (ib && typeof ib.onclick === 'function') { ib.onclick(); return true; }
+        showView('immo-options'); return true;
       }
       if (view === 'catalogue') {
-        var cbtn = document.getElementById('catalogue-back-btn');
-        if (cbtn && typeof cbtn.onclick === 'function') { cbtn.onclick(); return true; }
-        if (typeof showView === 'function') showView('list');
-        return true;
+        var cb = document.getElementById('catalogue-back-btn');
+        if (cb && typeof cb.onclick === 'function') { cb.onclick(); return true; }
+        showView('list'); return true;
       }
       if (view === 'immo-options') {
-        var obtn = document.getElementById('immo-options-back-btn');
-        if (obtn && typeof obtn.onclick === 'function') { obtn.onclick(); return true; }
-        if (typeof showView === 'function') showView('list');
-        return true;
+        var ob = document.getElementById('immo-options-back-btn');
+        if (ob && typeof ob.onclick === 'function') { ob.onclick(); return true; }
+        showView('list'); return true;
       }
-      if (view === 'kit-detail') {
-        if (typeof showView === 'function') showView('kits');
-        return true;
-      }
-      if (view === 'kits' || view === 'restaurants') {
-        if (typeof showView === 'function') showView('list');
-        return true;
-      }
-      if (view === 'list') {
-        // Retour depuis la liste des services → home
-        var tabs2 = ['home','services','orders','about','profile'];
-        tabs2.forEach(function(t) {
-          var p = document.getElementById('p-' + t);
-          if (p) p.classList.remove('on');
-          var b = document.getElementById('t-' + t);
-          if (b) b.classList.remove('on');
-        });
-        var ph2 = document.getElementById('p-home');
-        if (ph2) ph2.classList.add('on');
-        var th2 = document.getElementById('t-home');
-        if (th2) th2.classList.add('on');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return true;
-      }
+      if (view === 'form')         { showView('list'); return true; }
+      if (view === 'kit-detail')   { showView('kits'); return true; }
+      if (view === 'kits')         { showView('list'); return true; }
+      if (view === 'restaurants')  { showView('list'); return true; }
+      if (view === 'list')         { goHome(); return true; }
     }
 
-    // On est sur home → pas de retour possible ici
+    // On est sur home → sortie
     return false;
   }
 
-  // ── Toast de confirmation ────────────────────────────────
-  function showExitToast() {
-    if (typeof showToast === 'function') {
-      showToast('Appuyez encore une fois pour quitter OmniService TG', '#1E6FBE');
-      return;
-    }
-    var t = document.getElementById('_omni_exit_toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = '_omni_exit_toast';
-      t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);' +
-        'background:#1E6FBE;color:#fff;padding:12px 24px;border-radius:24px;font-size:14px;' +
-        'font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);' +
-        'pointer-events:none;white-space:nowrap;';
-      document.body.appendChild(t);
-    }
-    t.textContent = 'Appuyez encore une fois pour quitter OmniService TG';
-    t.style.opacity = '1'; t.style.display = 'block';
-    setTimeout(function() {
-      t.style.opacity = '0';
-      setTimeout(function() { t.style.display = 'none'; }, 400);
-    }, 5000);
-  }
-
-  // ── État sortie ──────────────────────────────────────────
-  var exitPending = false;
-  var exitTimer   = null;
-
-  // ── Initialisation ───────────────────────────────────────
-  // On remplace l'état courant puis on en ajoute un.
-  // Ainsi l'historique du navigateur a toujours au moins 2 entrées :
-  //   [état initial] [sentinel]
-  // Quand l'utilisateur appuie retour, le navigateur dépile "sentinel"
-  // et déclenche popstate. On remet aussitôt un sentinel pour le prochain appui.
+  // Initialisation : 1 état sentinel dans l'historique
   function init() {
     history.replaceState({ omni: 'base' }, '');
     history.pushState({ omni: 'sentinel' }, '');
@@ -4495,49 +4405,16 @@ function _stopNotifPolling() {
     init();
   }
 
-  // ── Gestionnaire popstate ────────────────────────────────
-  window.addEventListener('popstate', function (e) {
+  // Gestionnaire popstate
+  window.addEventListener('popstate', function () {
+    var canGoBack = goBack();
 
-    // Étape A — modale ouverte : la fermer et remettre sentinel
-    if (closeTopModal()) {
+    if (canGoBack) {
+      // On reste dans l'app → remettre sentinel
       history.pushState({ omni: 'sentinel' }, '');
-      exitPending = false;
-      if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
-      return;
     }
-
-    // Étape B — on peut naviguer en arrière dans l'app
-    var wentBack = navigateBack();
-    if (wentBack) {
-      history.pushState({ omni: 'sentinel' }, '');
-      exitPending = false;
-      if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
-      return;
-    }
-
-    // Étape C — navigateBack() a retourné false = on est sur home
-    // Vérification de sécurité absolue
-    if (activeTab() !== 'home') {
-      // Ne devrait pas arriver, mais par sécurité : remettre sentinel et stop
-      history.pushState({ omni: 'sentinel' }, '');
-      return;
-    }
-
-    // Étape D — on est sur home : gestion de la sortie
-    if (!exitPending) {
-      // 1er appui : toast + remettre sentinel pour intercepter le 2e
-      history.pushState({ omni: 'sentinel' }, '');
-      exitPending = true;
-      showExitToast();
-      exitTimer = setTimeout(function() { exitPending = false; }, 5000);
-      return;
-    }
-
-    // Étape E — 2e appui confirmé sur home dans les 5s
-    // On NE remet PAS de sentinel → le navigateur recule sur "base" et quitte
-    exitPending = false;
-    if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
-    // Pas de history.pushState → sortie naturelle
+    // Sinon : on est sur home → on ne remet PAS sentinel
+    // → le navigateur recule sur "base" et ferme l'app
   });
 
 }());
