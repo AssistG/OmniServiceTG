@@ -21,7 +21,7 @@ function initLocalisationModule() {
 // ════════════════════════════════════════
 // CONFIG
 // ════════════════════════════════════════
-const GEOAPIFY_API_KEY    = 'VOTRE_CLE_GEOAPIFY_ICI'; // ← Remplacer par votre clé Geoapify
+const GEOAPIFY_API_KEY    = '1e7a591d064540deb4560def0a9b5888'; // ← Remplacer par votre clé Geoapify
 const OMNI_DEPOT          = { lat: 6.17719, lng: 1.18233 };
 // Centre de Lomé + rayon ~30 km pour le biais Places
 const LOME_CENTER         = { lat: 6.1375, lng: 1.2123 };
