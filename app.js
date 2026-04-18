@@ -4394,9 +4394,11 @@ function _stopNotifPolling() {
     return false;
   }
 
-  // Initialisation : 1 état sentinel dans l'historique
+  // Initialisation : 1 seul pushState sentinel.
+  // PAS de replaceState — on veut qu'un seul appui depuis home
+  // dépile ce sentinel et laisse le navigateur revenir à la page
+  // précédente (ce qui ferme l'app en mode PWA / standalone).
   function init() {
-    history.replaceState({ omni: 'base' }, '');
     history.pushState({ omni: 'sentinel' }, '');
   }
   if (document.readyState === 'loading') {
