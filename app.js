@@ -4280,24 +4280,18 @@ function _stopNotifPolling() {
 
 // ═══════════════════════════════════════════════════════════
 // BOUTON RETOUR PHYSIQUE — PWA Android
-//
-// Principe : on simule exactement le clic sur le bouton retour
-// déjà présent dans chaque vue. Aucune logique de navigation
-// dupliquée — on réutilise 100% ce qui existe déjà.
-//
-// Depuis home → quitter l'app (1 seul appui, pas de confirmation)
 // ═══════════════════════════════════════════════════════════
 (function () {
   'use strict';
 
-  // Onglet actuellement actif
   function activeTab() {
     var el = document.querySelector('.btab.on');
     return el ? el.id.replace('t-', '') : 'home';
   }
 
-  // Vue services actuellement visible (display:block)
-  function activeView() {
+  // Vue active UNIQUEMENT si l'onglet services est actif
+  function activeServicesView() {
+    if (activeTab() !== 'services') return null;
     var vs = ['payment','delivery','form','immo-form','catalogue',
               'kit-detail','immo-options','kits','restaurants','success','list'];
     for (var i = 0; i < vs.length; i++) {
@@ -4307,7 +4301,6 @@ function _stopNotifPolling() {
     return null;
   }
 
-  // Ferme la première modale/overlay visible
   function closeModal() {
     var n = document.getElementById('notif-panel');
     if (n && n.style.display === 'flex') { n.style.display = 'none'; return true; }
@@ -4328,40 +4321,43 @@ function _stopNotifPolling() {
     return false;
   }
 
-  // Cliquer sur le bouton retour de la vue active.
-  // Retourne true si une action a été faite, false si on est sur home.
+  // Retourne true = on reste dans l'app | false = on est sur home → quitter
   function handleBack() {
 
-    // 1. Modale ouverte → la fermer
+    // 1. Modale → fermer
     if (closeModal()) return true;
 
     var tab  = activeTab();
-    var view = activeView();
+    var view = activeServicesView(); // null si tab !== 'services'
 
-    // 2. Dans les vues services → cliquer le bouton retour existant
-    if (tab === 'services' && view) {
-      // Chaque vue a son bouton .back-btn — on le clique directement
+    // 2. Onglet autre que home → aller sur home
+    if (tab !== 'home' && tab !== 'services') {
+      goTab('home');
+      return true;
+    }
+
+    // 3. Onglet services avec une vue profonde (pas 'list') → cliquer .back-btn
+    if (tab === 'services' && view && view !== 'list') {
       var viewEl = document.getElementById('view-' + view);
       if (viewEl) {
         var btn = viewEl.querySelector('.back-btn');
         if (btn) { btn.click(); return true; }
       }
-      // Fallback si pas de .back-btn : revenir à home
+      // Fallback : revenir à list
+      showView('list');
+      return true;
+    }
+
+    // 4. Onglet services sur 'list' → aller sur home
+    if (tab === 'services' && view === 'list') {
       goTab('home');
       return true;
     }
 
-    // 3. Sur un onglet autre que home → cliquer le bouton home de la nav
-    if (tab !== 'home') {
-      goTab('home');
-      return true;
-    }
-
-    // 4. Sur home → laisser quitter
+    // 5. Sur home → quitter
     return false;
   }
 
-  // Initialisation : 1 seul pushState pour intercepter le premier appui
   function init() {
     history.pushState({ omni: 'sentinel' }, '');
   }
@@ -4371,15 +4367,12 @@ function _stopNotifPolling() {
     init();
   }
 
-  // Gestionnaire popstate
   window.addEventListener('popstate', function () {
     var stayed = handleBack();
     if (stayed) {
-      // On reste dans l'app → remettre le sentinel
       history.pushState({ omni: 'sentinel' }, '');
     }
-    // stayed === false = on est sur home → on ne remet pas sentinel
-    // → le navigateur recule naturellement et ferme l'app
+    // false → home → pas de pushState → navigateur quitte
   });
 
 }());
