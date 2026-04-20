@@ -118,12 +118,12 @@ async function roadDistance(la1, lo1, la2, lo2) {
 
 function calcFare(km) {
   if (km < 2) return 500;
-  return 500 + Math.ceil(km - 1) * 100;
+  return 500 + Math.ceil(km - 1) * 50;
 }
 function fmtFare(km) {
   const fare = calcFare(km);
   const detail = km >= 2
-    ? `${km.toFixed(2)} km · 500+${Math.ceil(km-1)}×100 FCFA`
+    ? `${km.toFixed(2)} km · 500+${Math.ceil(km-1)}×50 FCFA`
     : `${km.toFixed(2)} km · forfait 500 FCFA`;
   return { fare, detail };
 }
